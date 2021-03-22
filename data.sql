@@ -67,3 +67,39 @@ insert into Employees values
 (default, 'June Lim', '1 Brooke Rd', 97416583, 'june.lim@gmail.com', '2019-08-01', '2021-05-01'),
 (default, 'Historia Reiss', 'Blk 407b Fernvale Road', 82956254, 'historia.reiss@gmail.com', '2021-01-01', null),
 (default, 'Eren Yeager', '244 Westwood Ave', 97390470, 'eren.yeager@gmail.com', '2020-03-01', null);
+
+-- FullTimeEmployees table
+insert into FullTimeEmployees values
+(7000, 1),
+(8000, 2),
+(5000, 3),
+(7000, 4),
+(8500, 5),
+(9000, 6),
+(6000, 7),
+(6500, 8),
+(5500, 9),
+(6000, 10),
+(6600, 11),
+(7300, 12),
+(7200, 13),
+(6500, 14),
+(6800, 15),
+(7500, 16),
+(8200, 17),
+(8900, 18),
+(5300, 19),
+(5400, 20),
+(6600, 21),
+(6700, 22),
+(6800, 23),
+(5500, 24),
+(5000, 25);
+
+-- FullTimeEmployees table
+insert into PartTimeEmployees values
+(40, 26),
+(45, 27),
+(37.5, 28),
+(35, 29),
+(50, 30);
