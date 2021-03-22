@@ -1,3 +1,7 @@
+-- to reset serial number
+ALTER SEQUENCE <tablename>_<id>_seq RESTART WITH 1
+-- e.g. ALTER SEQUENCE employees_emp_id_seq RESTART WITH 1
+
 -- Rooms table
 insert into Rooms values
 (default, '01-01', 20),
