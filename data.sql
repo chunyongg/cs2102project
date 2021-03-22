@@ -103,3 +103,42 @@ insert into PartTimeEmployees values
 (37.5, 28),
 (35, 29),
 (50, 30);
+
+-- Administrators table
+insert into Administrators values
+(1),
+(2),
+(3),
+(4),
+(5),
+(6),
+(7),
+(8),
+(9),
+(10);
+
+-- Managers table
+insert into Managers values
+(11),
+(12),
+(13),
+(14),
+(15),
+(16),
+(17),
+(18),
+(19),
+(20);
+
+-- Instructors table
+insert into Instructors values
+(21),
+(22),
+(23),
+(24),
+(25),
+(26),
+(27),
+(28),
+(29),
+(30);
