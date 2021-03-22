@@ -49,7 +49,7 @@ create table Instructors(
 	emp_id integer primary key references Employees on delete cascade
 );
 
-create table CourseArea (
+create table CourseAreas (
 	course_area text primary key,
 	manager_id integer not null references Managers
 );

@@ -96,7 +96,7 @@ insert into FullTimeEmployees values
 (5500, 24),
 (5000, 25);
 
--- FullTimeEmployees table
+-- PartTimeEmployees table
 insert into PartTimeEmployees values
 (40, 26),
 (45, 27),
@@ -142,3 +142,16 @@ insert into Instructors values
 (28),
 (29),
 (30);
+
+-- CourseAreas table
+insert into CourseAreas values
+('Algorithms and Theory', 11),
+('Artificial Intelligence', 12),
+('Game Design', 13),
+('Computer Security', 14),
+('Database Systems', 15),
+('Computer Networking', 16),
+('Parallel Computing', 17),
+('Software Engineering', 18),
+('Data Analytics', 19),
+('Programming Languages', 20);
