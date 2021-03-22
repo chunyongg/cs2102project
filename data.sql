@@ -3,7 +3,6 @@ delete from Table;
 alter sequence Table_attribute_seq restart with 1 -- (resets serial number) e.g. ALTER SEQUENCE employees_emp_id_seq RESTART WITH 1
 insert into Table values ();
 
--- Rooms table
 insert into Rooms values
 (default, '01-01', 20),
 (default, '01-02', 20),
@@ -31,7 +30,6 @@ insert into Rooms values
 (default, '05-04', 40),
 (default, '05-05', 40);
 
--- Employees table
 insert into Employees values
 -- admin
 (default, 'Sarah Tan', 'Blk 123 Ang Mo Kio', 90001010, 'sarah.tan@gmail.com', '2020-05-01', '2021-10-01'),
@@ -68,7 +66,6 @@ insert into Employees values
 (default, 'Historia Reiss', 'Blk 407b Fernvale Road', 82956254, 'historia.reiss@gmail.com', '2021-01-01', null),
 (default, 'Eren Yeager', '244 Westwood Ave', 97390470, 'eren.yeager@gmail.com', '2020-03-01', null);
 
--- FullTimeEmployees table
 insert into FullTimeEmployees values
 (7000, 1),
 (8000, 2),
@@ -96,7 +93,6 @@ insert into FullTimeEmployees values
 (5500, 24),
 (5000, 25);
 
--- PartTimeEmployees table
 insert into PartTimeEmployees values
 (40, 26),
 (45, 27),
@@ -104,7 +100,6 @@ insert into PartTimeEmployees values
 (35, 29),
 (50, 30);
 
--- Administrators table
 insert into Administrators values
 (1),
 (2),
@@ -117,7 +112,6 @@ insert into Administrators values
 (9),
 (10);
 
--- Managers table
 insert into Managers values
 (11),
 (12),
@@ -130,7 +124,6 @@ insert into Managers values
 (19),
 (20);
 
--- Instructors table
 insert into Instructors values
 (21),
 (22),
@@ -143,7 +136,6 @@ insert into Instructors values
 (29),
 (30);
 
--- CourseAreas table
 insert into CourseAreas values
 ('Algorithms and Theory', 11),
 ('Artificial Intelligence', 12),
@@ -155,3 +147,27 @@ insert into CourseAreas values
 ('Software Engineering', 18),
 ('Data Analytics', 19),
 ('Programming Languages', 20);
+
+-- The earliest session can start at 9am and the latest session (for each day) must end by 6pm, and no sessions are conducted between 12pm to 2pm
+-- So the maximum duration should be 7 hours
+insert into Courses values
+(default, 4, 'Introduction to Database Systems', 'This course covers programming with SQL, relational tuple calculus, relational domain calculus and relational algebra.', 'Database Systems'),
+(default, 4, 'Database Systems Implementation', 'This course provides an in-depth study of the concepts and implementation issues related to database management systems.', 'Database Systems'),
+(default, 2, 'Introduction to Data Analytics', 'This course introduces key data analytic algorithms and techniques used in data–rich business analytics projects.', 'Data Analytics'),
+(default, 3, 'Principles of Programming Languages', null, 'Programming Languages'),
+(default, 5, 'Introduction to Parallel Computing', 'This course exposes students to hands-on parallel programming projects on real parallel machines.', 'Parallel Computing'),
+(default, 7, 'Neural Networks and Deep Learning', 'This course provides students with the knowledge of deep neural network.', 'Artificial Intelligence'),
+(default, 2, 'Introduction to Computer Networking', null, 'Computer Networking'),
+(default, 2, 'Introduction to Software Engineering', 'This course covers object-oriented system analysis, system modelling, implementation and testing.', 'Software Engineering'),
+(default, 5, 'Image Processing and Analysis', 'This course introduces the fundamental concepts underlying digital image processing.', 'Artificial Intelligence'),
+(default, 3, 'Optimisation Algorithms', 'This course introduces approaches for finding good-enough solutions to NP-hard problems.', 'Algorithms and Theory'),
+(default, 1, 'Game Design', 'This course explores the factors that make a game successful.', 'Game Design'),
+(default, 3, 'Distributed Databases', null, 'Database Systems'),
+(default, 4, 'Game Development', 'This course introduces techniques for electronic game design and programming.', 'Game Design'),
+(default, 6, 'Multi-core Architectures', 'This course examines the design issues that are critical to modern parallel architectures.', 'Parallel Computing'),
+(default, 3, 'Software Product Engineering', 'This course allows students to develop well-tested, user-friendly, production-quality software in teams.', 'Software Engineering'),
+(default, 3, 'Big Data Engineering for Analytics', 'This course equips students with skills to engineer big data solutions.', 'Data Analytics'),
+(default, 6, 'Natural Language Processing', null, 'Artificial Intelligence'),
+(default, 4, 'Network Security', 'This course introduces the state-of-the-art techniques for addressing network security issues.', 'Computer Security'),
+(default, 3, 'Programming Language Implementation', 'This course discusses implementation aspects of fundamental programming paradigms.', 'Programming Languages'),
+(default, 2, 'Internet of Things', null, 'Computer Networking');
