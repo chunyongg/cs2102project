@@ -171,3 +171,8 @@ insert into Courses values
 (default, 4, 'Network Security', 'This course introduces the state-of-the-art techniques for addressing network security issues.', 'Computer Security'),
 (default, 3, 'Programming Language Implementation', 'This course discusses implementation aspects of fundamental programming paradigms.', 'Programming Languages'),
 (default, 2, 'Internet of Things', null, 'Computer Networking');
+
+insert into CoursePackages values
+(default, '2021-01-01', '2021-12-01', 5, '2021 Sale', '4000'),
+(default, '2021-03-01', '2021-04-01', 1, 'March Sale', '500'),
+(default, '2021-05-01', '2021-08-01', 2, 'Summer Break Sale', '800');
