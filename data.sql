@@ -136,6 +136,20 @@ insert into Instructors values
 (29),
 (30);
 
+insert into FullTimeInstructors values
+('Algorithms and Theory', 21),
+('Artificial Intelligence', 22),
+('Game Design', 23),
+('Computer Security', 24),
+('Database Systems', 25);
+
+insert into PartTimeInstructors values
+('Computer Networking', 26),
+('Parallel Computing', 27),
+('Software Engineering', 28),
+('Data Analytics', 29),
+('Programming Languages', 30);
+
 insert into CourseAreas values
 ('Algorithms and Theory', 11),
 ('Artificial Intelligence', 12),
