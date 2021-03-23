@@ -76,9 +76,10 @@ create table Courses (
 
 create table CourseOfferings (
 	launch_date date unique,
-	end_date date not null,
 	start_date date not null,
-	registration_deadline date not null,
+	end_date date not null,
+	registration_deadline date not null
+		check(registration_deadline = start_date - 10),
 	target_number_registrations integer not null,
 	fees numeric(10,2) not null,
 	seating_capacity integer not null,
