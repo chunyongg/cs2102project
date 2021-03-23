@@ -21,3 +21,19 @@ $$ LANGUAGE SQL
 -- package name, number of free course sessions, end date for promotional package, and the price of the package.
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+-- F6:
+CREATE OR REPLACE FUNCTION find_instructors (
+    IN cid INTEGER, IN session_date DATE, IN session_hour INTEGER, 
+    OUT emp_id INTEGER, OUT emp_name TEXT)
+RETURNS RECORD AS $$
+    SELECT emp_id, emp_name
+    FROM Employees
+    NATURAL JOIN Instructors
+    INNER JOIN Sessions
+    ON Instructors.emp_id = Sessions.instructor_id 
+    WHERE Sessions.course_id = cid
+    AND Sessions.sess_date = session_date
+    AND session_hour IN (SELECT DATE_PART('hour', Sessions.start_time));
+$$ LANGUAGE sql;
