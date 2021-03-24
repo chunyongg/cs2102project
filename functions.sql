@@ -16,9 +16,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 --F4
-CREATE OR REPLACE PROCEDURE update_credit_card(IN cust_id integer, IN cc_number integer, IN cvv integer, IN
-    expiry_date
-date)
+CREATE OR REPLACE PROCEDURE update_credit_card(IN cust_id integer,
+IN cc_number integer, IN cvv integer, IN expiry_date date)
 AS $$
     UPDATE CreditCards
     SET cc_number = cc_number, cvv = cvv, expiry_date = expiry_date
