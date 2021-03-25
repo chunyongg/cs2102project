@@ -1,7 +1,43 @@
--- 8. find_rooms: This routine is used to find all the rooms that could be used for a course session. The inputs to the routine include the following: session date, session start hour, and session duration. The routine returns a table of room identifiers.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- 8. find_rooms: This routine is used to find all the rooms that could be used for a course session.
+-- Inputs: session date, session start hour, and session duration
+-- Returns: a table of room identifiers.
 
--- 9. get_available_rooms: This routine is used to retrieve the availability information of rooms for a specific duration. The inputs to the routine include a start date and an end date. The routine returns a table of records consisting of the following information: room identifier, room capacity, day (which is within the input date range [start date, end date]), and an array of the hours that the room is available on the specified day. The output is sorted in ascending order of room identifier and day, and the array entries are sorted in ascending order of hour.
+CREATE OR REPLACE FUNCTION find_rooms (IN sess_date DATE, IN start_time TIMESTAMP, IN duration INTEGER, OUT room_id INTEGER)
+RETURNS SETOF RECORD AS $$
+    SELECT DISTINCT room_id
+    FROM Rooms R
+    EXCEPT
+    SELECT DISTINCT C.room_id
+    FROM Conducts C
+    WHERE C.sess_date = sess_date
+    AND NOT EXISTS (
+        SELECT DISTINCT C2.room_id
+        FROM Conducts C2
+        WHERE C2.sess_date = sess_date
+        AND C2.end_time <= start_time
+        AND C2.start_time >= start_time + duration
+    ) -- end before input start_time AND start after input end_time
+ $$ LANGUAGE SQL
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- 9. get_available_rooms: This routine is used to retrieve the availability information of rooms for a specific duration.
+-- Inputs: start date and end date
+-- Returns: a table of records consisting of the following information:
+-- room identifier, room capacity, day (which is within the input date range [start date, end date]),
+-- and an array of the hours that the room is available on the specified day. The output is sorted in ascending order of room identifier and day, and the array entries are sorted in ascending order of hour.
 
+CREATE OR REPLACE FUNCTION get_available_rooms (IN start_date DATE, IN end_date DATE, OUT room_id INT, OUT room_capacity INT, OUT day DATE, OUT hours INT[])
+RETURNS SETOF RECORD AS $$
+    DECLARE
+        day DATE;
+    BEGIN
+        day := start_date
+        LOOP
+            EXIT WHEN day > end_date;
+            SELECT room_id, seating_capacity, day, hours;
+            day := day + 1;
+    END;
+$$ LANGUAGE SQL
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 11. add_course_package: This routine is used to add a new course package for sale.
 -- Inputs: package name, number of free course sessions, start and end date indicating the duration that the promotional package is available for sale, and the price of the package.
@@ -15,11 +51,17 @@ $$ LANGUAGE SQL
 
 -- e.g. call add_course_package ('Valentines Day Sales', 2, '2021-02-01', '2021-11-01', 4000);
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 -- 12. get_available_course_packages: This routine is used to retrieve the course packages that are available for sale.
 -- Returns: a table of records with the following information for each available course package:
 -- package name, number of free course sessions, end date for promotional package, and the price of the package.
 
+CREATE OR REPLACE FUNCTION get_available_course_packages (OUT package_name TEXT, OUT num_free_registrations INT, OUT sale_end_date DATE, OUT price NUMERIC)
+RETURNS SETOF RECORD AS $$
+    SELECT package_name, num_free_registrations, sale_end_date, price
+    FROM CoursePackages
+$$ LANGUAGE SQL
+
+-- e.g. select get_available_course_packages()
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
