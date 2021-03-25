@@ -1,8 +1,5 @@
--- update data SOP
-delete from Table;
-alter sequence Table_attribute_seq restart with 1 -- (resets serial number) e.g. ALTER SEQUENCE employees_emp_id_seq RESTART WITH 1
-insert into Table values ();
-
+delete from Rooms;
+alter sequence Rooms_room_id_seq restart with 1;
 insert into Rooms values
 (default, '01-01', 20),
 (default, '01-02', 20),
@@ -30,6 +27,8 @@ insert into Rooms values
 (default, '05-04', 40),
 (default, '05-05', 40);
 
+delete from Employees;
+alter sequence Employees_emp_id_seq restart with 1;
 insert into Employees values
 -- admin
 (default, 'Sarah Tan', 'Blk 123 Ang Mo Kio', 90001010, 'sarah.tan@gmail.com', '2020-05-01', '2021-10-01'),
@@ -66,6 +65,7 @@ insert into Employees values
 (default, 'Historia Reiss', 'Blk 407b Fernvale Road', 82956254, 'historia.reiss@gmail.com', '2021-01-01', null),
 (default, 'Eren Yeager', '244 Westwood Ave', 97390470, 'eren.yeager@gmail.com', '2020-03-01', null);
 
+delete from FullTimeEmployees;
 insert into FullTimeEmployees values
 (7000, 1),
 (8000, 2),
@@ -93,6 +93,7 @@ insert into FullTimeEmployees values
 (5500, 24),
 (5000, 25);
 
+delete from PartTimeEmployees;
 insert into PartTimeEmployees values
 (40, 26),
 (45, 27),
@@ -100,6 +101,7 @@ insert into PartTimeEmployees values
 (35, 29),
 (50, 30);
 
+delete from Administrators;
 insert into Administrators values
 (1),
 (2),
@@ -112,6 +114,7 @@ insert into Administrators values
 (9),
 (10);
 
+delete from Managers;
 insert into Managers values
 (11),
 (12),
@@ -124,6 +127,7 @@ insert into Managers values
 (19),
 (20);
 
+delete from Instructors;
 insert into Instructors values
 (21),
 (22),
@@ -136,20 +140,7 @@ insert into Instructors values
 (29),
 (30);
 
-insert into FullTimeInstructors values
-('Algorithms and Theory', 21),
-('Artificial Intelligence', 22),
-('Game Design', 23),
-('Computer Security', 24),
-('Database Systems', 25);
-
-insert into PartTimeInstructors values
-('Computer Networking', 26),
-('Parallel Computing', 27),
-('Software Engineering', 28),
-('Data Analytics', 29),
-('Programming Languages', 30);
-
+delete from CourseAreas;
 insert into CourseAreas values
 ('Algorithms and Theory', 11),
 ('Artificial Intelligence', 12),
@@ -162,8 +153,26 @@ insert into CourseAreas values
 ('Data Analytics', 19),
 ('Programming Languages', 20);
 
+delete from FullTimeInstructors;
+insert into FullTimeInstructors values
+('Algorithms and Theory', 21),
+('Artificial Intelligence', 22),
+('Game Design', 23),
+('Computer Security', 24),
+('Database Systems', 25);
+
+delete from PartTimeInstructors;
+insert into PartTimeInstructors values
+('Computer Networking', 26),
+('Parallel Computing', 27),
+('Software Engineering', 28),
+('Data Analytics', 29),
+('Programming Languages', 30);
+
 -- The earliest session can start at 9am and the latest session (for each day) must end by 6pm, and no sessions are conducted between 12pm to 2pm
 -- So the maximum duration should be 7 hours
+delete from Courses;
+alter sequence Courses_course_id_seq restart with 1;
 insert into Courses values
 (default, 4, 'Introduction to Database Systems', 'This course covers programming with SQL, relational tuple calculus, relational domain calculus and relational algebra.', 'Database Systems'),
 (default, 4, 'Database Systems Implementation', 'This course provides an in-depth study of the concepts and implementation issues related to database management systems.', 'Database Systems'),
@@ -186,23 +195,28 @@ insert into Courses values
 (default, 3, 'Programming Language Implementation', 'This course discusses implementation aspects of fundamental programming paradigms.', 'Programming Languages'),
 (default, 2, 'Internet of Things', null, 'Computer Networking');
 
+delete from CoursePackages;
+alter sequence CoursePackages_package_id_seq restart with 1;
 insert into CoursePackages values
 (default, '2021-01-01', '2021-12-01', 5, '2021 Sale', '4000'),
 (default, '2021-03-01', '2021-04-01', 1, 'March Sale', '500'),
 (default, '2021-05-01', '2021-08-01', 2, 'Summer Break Sale', '800');
 
-insert into CourseOfferings values
-('2021-01-01', '2021-02-01', '2021-03-01', '2021-02-19', 100, 300, 20, 1, 1),
-('2021-02-01', '2021-03-01', '2021-04-01', '2021-03-22', 200, 400, 25, 2, 2),
-('2021-03-01', '2021-04-01', '2021-05-01', '2021-04-21', 100, 500, 30, 3, 3),
-('2021-04-01', '2021-05-01', '2021-06-01', '2021-05-22', 200, 600, 35, 4, 4),
-('2021-05-01', '2021-06-01', '2021-07-01', '2021-06-21', 100, 700, 40, 5, 5),
-('2021-06-01', '2021-07-01', '2021-08-01', '2021-07-22', 200, 600, 20, 6, 6),
-('2021-07-01', '2021-08-01', '2021-09-01', '2021-08-22', 100, 500, 25, 7, 7),
-('2021-08-01', '2021-09-01', '2021-10-01', '2021-09-21', 200, 400, 30, 8, 8),
-('2021-09-01', '2021-10-01', '2021-11-01', '2021-10-22', 100, 300, 35, 9, 9),
-('2021-10-01', '2021-11-01', '2021-12-01', '2021-11-21', 200, 200, 40, 10, 10);
+delete from CourseOfferings;
+insert into CourseOfferings values(launch_date, start_date, end_date, registration_target, fees, admin_id, course_id)
+('2021-01-01', '2021-01-01', '2021-03-01', 100, 300.00, 20, 1, 1),
+('2021-02-01', '2021-02-01', '2021-04-01', 200, 400.00, 25, 2, 2),
+('2021-03-01', '2021-03-01', '2021-05-01', 100, 500.00, 30, 3, 3),
+('2021-04-01', '2021-04-01', '2021-06-01', 200, 600.00, 35, 4, 4),
+('2021-05-01', '2021-05-01', '2021-07-01', 100, 700.00, 40, 5, 5),
+('2021-06-01', '2021-06-01', '2021-08-01', 200, 600.00, 20, 6, 6),
+('2021-07-01', '2021-07-01', '2021-09-01', 100, 500.00, 25, 7, 7),
+('2021-08-01', '2021-08-01', '2021-10-01', 200, 400.00, 30, 8, 8),
+('2021-09-01', '2021-09-01', '2021-11-01', 100, 300.00, 35, 9, 9),
+('2021-10-01', '2021-10-01', '2021-12-01', 200, 200.00, 40, 10, 10);
 
+delete from Sessions;
+alter sequence Sessions_sess_id_seq restart with 1;
 insert into Sessions values 
 (default, 1, '2021-11-01 14:00:00', '2021-11-01 15:00:00', '2021-11-01', '2021-10-25', 21, 10, '2021-10-01'),
 (default, 2, '2021-11-01 17:00:00', '2021-11-01 18:00:00', '2021-11-01', '2021-10-25', 21, 10, '2021-10-01'),
@@ -212,3 +226,35 @@ insert into Sessions values
 (default, 1, '2021-07-01 11:00:00', '2021-07-01 12:00:00', '2021-07-01', '2021-06-24', 26, 6, '2021-06-01'),
 (default, 1, '2021-06-01 15:00:00', '2021-06-01 16:00:00', '2021-06-01', '2021-05-24', 27, 5, '2021-05-01'),
 (default, 1, '2021-04-01 11:00:00', '2021-04-01 12:00:00', '2021-04-01', '2021-03-24', 29, 3, '2021-03-01');
+
+delete from Customers;
+alter sequence Customers_cust_id_seq restart with 1;
+insert into Customers values
+(default, '13 Lor 8 Toa Payoh', 98264332, 'Xia Cheng', 'xiacheng@gmail.com'),
+(default, '51 New Bridge Road', 82654397, 'Shi Hui Min', 'huimin96@yahoo.com'),
+(default, '437 Tanjong Katong Rd', 89776527, 'Abdul Hazirah', 'itzhazirah@email.com'),
+(default, 'Blk 32 Hougang Street 19', 93522165, 'Carole Tay', 'caroleee@me.com'),
+(default, 'Blk 194 Tampines Street 16', 81234562, 'Diana Yusoff', 'dddofff@icloud.com'),
+(default, '9 Jalan Selaseh', 99286426, 'Kristen Teoh', 'kristen123@gmail.com'),
+(default, 'Blk 39 Bedok Street 75', 88261126, 'Alicia Tan', 'alistar73@outlook.com'),
+(default, '82 Pandan Valley Circle', 89235761, 'Danish Yacob', 'dyacob@rocketmail.com'),
+(default, 'Blk 49 Lorong 6 Buangkok', 99111836, 'Carter Shum', 'carter@ymail.com'),
+(default, '30 Punggol Hill', 98183329, 'Yong See Kew Alvira', 'alviraysk@gmail.com');
+
+delete from CreditCards;
+insert into CreditCards values
+('4602659607038509', 725, '2024-08-01', 1),
+('348773017925424', 135, '2021-04-01', 2),
+('4347465053571468', 355, '2022-05-01', 3),
+('6011160715370157', 890, '2023-06-01', 4),
+('5204007499487609', 447, '2024-07-01', 5),
+('4209949185032728', 123, '2025-08-01', 6),
+('371075328374437', 865, '2026-09-01', 7),
+('367421788551567', 981, '2027-10-01', 8),
+('5491129751647597', 236, '2028-11-01', 9),
+('4246936242452879', 576, '2029-12-01', 10);
+
+delete from Registers;
+insert into Registers values 
+()
+
