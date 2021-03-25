@@ -55,12 +55,12 @@ create table CourseAreas (
 );
 
 create table FullTimeInstructors(
-	course_area text not null references CourseArea,
+	course_area text not null references CourseAreas,
 	emp_id integer primary key references FullTimeEmployees references Instructors on delete cascade
 );
 	
 create table PartTimeInstructors(
-	course_area text not null references CourseArea,
+	course_area text not null references CourseAreas,
 	emp_id integer primary key references PartTimeEmployees references Instructors on delete cascade
 );
 
@@ -70,7 +70,7 @@ create table Courses (
 	duration integer not null,
 	title text unique not null,
 	description text,
-	course_area text references CourseArea on delete cascade,
+	course_area text references CourseAreas on delete cascade,
 	primary key(course_id, course_area)
 );
 
@@ -80,7 +80,7 @@ create table CourseOfferings (
 	end_date date not null,
 	registration_deadline date not null
 		check(registration_deadline = start_date - 10),
-	target_number_registrations integer not null,
+	registration_target integer not null,
 	fees numeric(10,2) not null,
 	seating_capacity integer not null,
 	admin_id integer not null references Administrators,
@@ -125,7 +125,7 @@ create table Customers (
 );
 
 create table CreditCards (
-	cc_number integer primary key,
+	cc_number text primary key,
 	cvv integer not null,
 	expiry_date date not null,
 	cust_id integer not null references Customers
@@ -145,7 +145,7 @@ create table Buys (
 	redemptions_left integer not null,
 	package_id integer references CoursePackages,
 	cust_id integer references Customers on delete cascade,
-	cc_number integer not null references CreditCards,
+	cc_number text not null references CreditCards,
 	primary key(cust_id, package_id)
 );
 
@@ -153,7 +153,7 @@ create table Registers (
 	register_date date not null,
 	cust_id integer references Customers on delete cascade,
 	sess_id integer references Sessions(sess_id),
-	cc_number integer not null references CreditCards,
+	cc_number text not null references CreditCards,
 	primary key(cust_id, sess_id)
 );
 
