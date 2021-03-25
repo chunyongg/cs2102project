@@ -22,7 +22,7 @@ AS $$
     UPDATE CreditCards
     SET cc_number = cc_number, cvv = cvv, expiry_date = expiry_date
     WHERE cust_id = cust_id;
-$$ LANGUAGE SQL;
+$$ LANGUAGE plpgsql;
 
 --F13
 CREATE OR REPLACE PROCEDURE buy_course_package(IN cust_id integer, IN package_id integer)
