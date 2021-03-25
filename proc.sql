@@ -79,3 +79,26 @@ RETURNS RECORD AS $$
     AND Sessions.sess_date = session_date
     AND session_hour IN (SELECT DATE_PART('hour', Sessions.start_time));
 $$ LANGUAGE sql;
+
+-- F7:
+
+-- F15:
+CREATE OR REPLACE FUNCTION get_available_course_offerings (
+)
+
+-- F16:
+CREATE OR REPLACE FUNCTION get_available_course_sessions (
+    OUT session_date DATE, OUT session_hour INTEGER, OUT inst_name TEXT, OUT seat_remaining INTEGER)
+RETURNS SETOF RECORD AS $$
+    SELECT sess_date, DATE_PART('hour', start_time), emp_name,
+	(SELECT seating_capacity 
+	 FROM CourseOfferings 
+	 WHERE CourseOfferings.launch_date = Sessions.launch_date
+	 EXCEPT
+	 SELECT COUNT(*) FROM Registers
+	 WHERE Registers.sess_id = Sessions.sess_id)
+    FROM Sessions
+    INNER JOIN Employees
+	ON Sessions.instructor_id = Employees.emp_id
+    ORDER BY (sess_date, DATE_PART('hour', start_time));
+$$ LANGUAGE sql;
