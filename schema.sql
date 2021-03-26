@@ -127,7 +127,7 @@ create table Customers (
 );
 
 create table CreditCards (
-	cc_number integer primary key,
+	cc_number varchar(16) primary key,
 	cvv integer not null,
 	expiry_date date not null,
 	cust_id integer not null references Customers
@@ -147,7 +147,7 @@ create table Buys (
 	redemptions_left integer not null,
 	package_id integer references CoursePackages,
 	cust_id integer references Customers on delete cascade,
-	cc_number integer not null references CreditCards,
+	cc_number varchar(16) not null references CreditCards,
 	primary key(cust_id, package_id)
 );
 
@@ -155,7 +155,7 @@ create table Registers (
 	register_date date not null,
 	cust_id integer references Customers on delete cascade,
 	sess_id integer references Sessions(sess_id),
-	cc_number integer not null references CreditCards,
+	cc_number varchar(16) not null references CreditCards,
 	primary key(cust_id, sess_id)
 );
 
