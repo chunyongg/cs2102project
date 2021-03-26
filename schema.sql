@@ -113,6 +113,7 @@ create table Sessions (
 	instructor_id integer not null references Instructors,
 	course_id integer references CourseOfferings(course_id) on delete cascade,
 	launch_date date references CourseOfferings(launch_date) on delete cascade,
+	room_id integer references Rooms not null,
 	primary key(sess_num, course_id, launch_date)
 );
 
