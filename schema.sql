@@ -75,7 +75,7 @@ create table Courses (
 );
 
 create table CourseOfferings (
-	offering_id serial unique,
+	offering_id integer unique not null,
 	launch_date date unique not null,
 	start_date date not null,
 	end_date date not null,
@@ -96,7 +96,7 @@ create table Rooms (
 );
 
 create table Sessions (
-	sess_id serial unique,
+	sess_id serial unique not null,
 	sess_num integer not null,
 	start_time timestamp not null
 		check(start_time < end_time 
