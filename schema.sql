@@ -55,12 +55,12 @@ create table CourseAreas (
 );
 
 create table FullTimeInstructors(
-	course_area text not null references CourseArea,
+	course_area text not null references CourseAreas,
 	emp_id integer primary key references FullTimeEmployees references Instructors on delete cascade
 );
 	
 create table PartTimeInstructors(
-	course_area text not null references CourseArea,
+	course_area text not null references CourseAreas,
 	emp_id integer primary key references PartTimeEmployees references Instructors on delete cascade
 );
 
@@ -70,7 +70,7 @@ create table Courses (
 	duration integer not null,
 	title text unique not null,
 	description text,
-	course_area text references CourseArea on delete cascade,
+	course_area text references CourseAreas on delete cascade,
 	primary key(course_id, course_area)
 );
 
