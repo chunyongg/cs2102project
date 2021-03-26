@@ -80,25 +80,92 @@ RETURNS RECORD AS $$
     AND session_hour IN (SELECT DATE_PART('hour', Sessions.start_time));
 $$ LANGUAGE sql;
 
+-- Testcases:
+-- select * from find_instructors(10, '2021-11-01', 14);
+-- select * from find_instructors(8, '2021-09-01', 9);
+-- select * from find_instructors(8, '2021-10-01', 11);
+-- select * from find_instructors(3, '2021-04-01', 11);
+
 -- F7:
+-- incomplete (need to add teach hours and avail hour)
+CREATE OR REPLACE FUNCTION get_available_instructors (
+    IN cid INTEGER, IN s_date DATE, IN e_date DATE,
+    OUT emp_id INTEGER, OUT emp_name TEXT) -- teach_hours INTEGER , avail_hours INTEGER ARRAY
+RETURNS SETOF RECORD AS $$
+    SELECT course_id, start_date, end_date, emp_id, emp_name
+    FROM Sessions 
+    INNER JOIN Employees
+    ON Sessions.instructor_id = Employees.emp_id;
+$$ LANGUAGE sql;
+
+-- Testcases:
 
 -- F15:
+-- incomplete (need to fix remaining seats)
 CREATE OR REPLACE FUNCTION get_available_course_offerings (
-)
+    OUT c_title TEXT, OUT c_area TEXT, OUT s_date DATE, OUT e_date DATE, 
+    OUT r_deadline DATE, OUT c_fee NUMERIC(10,2), num_remaining INTEGER)
+RETURNS SETOF RECORD AS $$
+    SELECT title, course_area, start_date, end_date, registration_deadline, fees 
+    FROM CourseOfferings
+    INNER JOIN Sessions
+    ON CourseOfferings.launch_date = Sessions.launch_date
+    INNER JOIN Courses
+    ON CourseOfferings.course_id = Courses.course_id
+    ORDER BY (registration_deadline, title);
+$$ LANGUAGE sql;
+
+-- Testcases:
+-- select * from get_available_course_offerings
 
 -- F16:
+-- incomplete (need to fix remaining seats)
 CREATE OR REPLACE FUNCTION get_available_course_sessions (
     OUT session_date DATE, OUT session_hour INTEGER, OUT inst_name TEXT, OUT seat_remaining INTEGER)
 RETURNS SETOF RECORD AS $$
-    SELECT sess_date, DATE_PART('hour', start_time), emp_name,
-	(SELECT seating_capacity 
-	 FROM CourseOfferings 
-	 WHERE CourseOfferings.launch_date = Sessions.launch_date
-	 EXCEPT
-	 SELECT COUNT(*) FROM Registers
-	 WHERE Registers.sess_id = Sessions.sess_id)
+    WITH RegistrationCount AS (
+        SELECT COUNT(*) AS registered FROM Registers
+        GROUP BY sess_id
+    ), RemainingSeats AS (
+        SELECT (seating_capacity - registered) AS remaining
+        FROM CourseOfferings
+        INNER JOIN RegistrationCount
+        ON CourseOfferings.sess_id = RegistrationCount.sess_id
+        GROUP BY sess_id
+    )
+    SELECT sess_date, DATE_PART('hour', start_time), emp_name, remaining
     FROM Sessions
     INNER JOIN Employees
 	ON Sessions.instructor_id = Employees.emp_id
+    NATURAL JOIN RemainingSeats
     ORDER BY (sess_date, DATE_PART('hour', start_time));
 $$ LANGUAGE sql;
+
+-- Testcases:
+-- select * from get_available_course_sessions
+
+-- F21
+-- Works but I think need to add sth like ensure instructor updated is of course area
+CREATE OR REPLACE PROCEDURE update_instructor (
+    l_date DATE, cid INTEGER, s_num INTEGER, emp_id INTEGER
+)
+AS $$
+    UPDATE Sessions
+    SET instructor_id = emp_id
+    WHERE launch_date = l_date
+    AND course_id = cid
+    AND sess_num = s_num;
+$$ LANGUAGE SQL
+
+-- Testcases:
+-- select * from update_instructor('2021-10-01', 10, 3, 30)
+
+-- F22
+-- Current tables have to be updated to support this
+CREATE OR REPLACE PROCEDURE update_room (
+    cid INTEGER, s_num INTEGER, rid INTEGER
+)
+AS $$
+    --UPDATE ???
+    --SET ???.room_id = rid
+$$ LANGUAGE SQL
