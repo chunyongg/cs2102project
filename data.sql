@@ -1,8 +1,5 @@
--- update data SOP
-delete from <tablename>; -- delete all records from the specified Table (e.g. delete from Employees)
-alter sequence <tablename>_<attribute_name>_seq restart with 1 -- resets serial number (e.g. alter sequence employees_emp_id_seq restart with 1)
-insert into Table values (); -- insert records
-
+delete from Rooms;
+alter sequence Rooms_room_id_seq restart with 1;
 insert into Rooms values
 (default, '01-01', 20),
 (default, '01-02', 20),
@@ -30,6 +27,8 @@ insert into Rooms values
 (default, '05-04', 40),
 (default, '05-05', 40);
 
+delete from Employees;
+alter sequence Employees_emp_id_seq restart with 1;
 insert into Employees values
 -- admin
 (default, 'Sarah Tan', 'Blk 123 Ang Mo Kio', 90001010, 'sarah.tan@gmail.com', '2020-05-01', '2021-10-01'),
@@ -66,6 +65,7 @@ insert into Employees values
 (default, 'Historia Reiss', 'Blk 407b Fernvale Road', 82956254, 'historia.reiss@gmail.com', '2021-01-01', null),
 (default, 'Eren Yeager', '244 Westwood Ave', 97390470, 'eren.yeager@gmail.com', '2020-03-01', null);
 
+delete from FullTimeEmployees;
 insert into FullTimeEmployees values
 (7000, 1),
 (8000, 2),
@@ -93,6 +93,7 @@ insert into FullTimeEmployees values
 (5500, 24),
 (5000, 25);
 
+delete from PartTimeEmployees;
 insert into PartTimeEmployees values
 (40, 26),
 (45, 27),
@@ -100,6 +101,7 @@ insert into PartTimeEmployees values
 (35, 29),
 (50, 30);
 
+delete from Administrators;
 insert into Administrators values
 (1),
 (2),
@@ -112,6 +114,7 @@ insert into Administrators values
 (9),
 (10);
 
+delete from Managers;
 insert into Managers values
 (11),
 (12),
@@ -124,6 +127,7 @@ insert into Managers values
 (19),
 (20);
 
+delete from Instructors;
 insert into Instructors values
 (21),
 (22),
@@ -136,20 +140,7 @@ insert into Instructors values
 (29),
 (30);
 
-insert into FullTimeInstructors values
-('Algorithms and Theory', 21),
-('Artificial Intelligence', 22),
-('Game Design', 23),
-('Computer Security', 24),
-('Database Systems', 25);
-
-insert into PartTimeInstructors values
-('Computer Networking', 26),
-('Parallel Computing', 27),
-('Software Engineering', 28),
-('Data Analytics', 29),
-('Programming Languages', 30);
-
+delete from CourseAreas;
 insert into CourseAreas values
 ('Algorithms and Theory', 11),
 ('Artificial Intelligence', 12),
@@ -162,8 +153,26 @@ insert into CourseAreas values
 ('Data Analytics', 19),
 ('Programming Languages', 20);
 
+delete from FullTimeInstructors;
+insert into FullTimeInstructors values
+('Algorithms and Theory', 21),
+('Artificial Intelligence', 22),
+('Game Design', 23),
+('Computer Security', 24),
+('Database Systems', 25);
+
+delete from PartTimeInstructors;
+insert into PartTimeInstructors values
+('Computer Networking', 26),
+('Parallel Computing', 27),
+('Software Engineering', 28),
+('Data Analytics', 29),
+('Programming Languages', 30);
+
 -- The earliest session can start at 9am and the latest session (for each day) must end by 6pm, and no sessions are conducted between 12pm to 2pm
 -- So the maximum duration should be 7 hours
+delete from Courses;
+alter sequence Courses_course_id_seq restart with 1;
 insert into Courses values
 (default, 4, 'Introduction to Database Systems', 'This course covers programming with SQL, relational tuple calculus, relational domain calculus and relational algebra.', 'Database Systems'),
 (default, 4, 'Database Systems Implementation', 'This course provides an in-depth study of the concepts and implementation issues related to database management systems.', 'Database Systems'),
@@ -186,26 +195,31 @@ insert into Courses values
 (default, 3, 'Programming Language Implementation', 'This course discusses implementation aspects of fundamental programming paradigms.', 'Programming Languages'),
 (default, 2, 'Internet of Things', null, 'Computer Networking');
 
+delete from CoursePackages;
+alter sequence CoursePackages_package_id_seq restart with 1;
 insert into CoursePackages values
 (default, '2021-01-01', '2021-12-01', 5, '2021 Sale', '4000'),
 (default, '2021-03-01', '2021-04-01', 1, 'March Sale', '500'),
 (default, '2021-05-01', '2021-08-01', 2, 'Summer Break Sale', '800');
 
 delete from CourseOfferings;
-alter sequence CourseOfferings_offering_id_seq restart with 1;
 insert into CourseOfferings values
-(default, '2021-01-01', '2021-01-01', '2021-03-01', '2020-12-22', 100, 300.00, 20, 1, 1),
-(default, '2021-02-01', '2021-02-01', '2021-04-01', '2021-01-22', 200, 400.00, 25, 2, 2),
-(default, '2021-03-01', '2021-03-01', '2021-05-01', '2021-02-19', 100, 500.00, 30, 3, 3),
-(default, '2021-04-01', '2021-04-01', '2021-06-01', '2021-03-22', 200, 600.00, 35, 4, 4),
-(default, '2021-05-01', '2021-05-01', '2021-07-01', '2021-04-21', 100, 700.00, 40, 5, 5),
-(default, '2021-06-01', '2021-06-01', '2021-08-01', '2021-05-22', 200, 600.00, 20, 6, 6),
-(default, '2021-07-01', '2021-07-01', '2021-09-01', '2021-06-21', 100, 500.00, 25, 7, 7),
-(default, '2021-08-01', '2021-08-01', '2021-10-01', '2021-07-22', 200, 400.00, 30, 8, 8),
-(default, '2021-09-01', '2021-09-01', '2021-11-01', '2021-08-22', 100, 300.00, 35, 9, 9),
-(default, '2021-10-01', '2021-10-01', '2021-12-01', '2021-09-21', 200, 200.00, 40, 10, 10);
+-- offering_id, launch_date, start_date, end_date, registration_deadline, fees, seating_capacity, admin_id, course_id
+(default, '2021-01-01', '2021-01-01', '2021-02-01', '2020-12-22', 100, 100.00, 20, 1, 1),
+(default, '2021-02-01', '2021-02-01', '2021-03-01', '2021-01-22', 200, 200.00, 20, 2, 2),
+(default, '2021-03-01', '2021-03-01', '2021-04-01', '2021-02-19', 300, 300.00, 20, 3, 3),
+(default, '2021-04-01', '2021-04-01', '2021-05-01', '2021-03-22', 400, 400.00, 20, 4, 4),
+(default, '2021-05-01', '2021-05-01', '2021-06-01', '2021-04-21', 500, 500.00, 20, 5, 5),
+(default, '2021-06-01', '2021-06-01', '2021-07-01', '2021-05-22', 600, 600.00, 25, 6, 6),
+(default, '2021-07-01', '2021-07-01', '2021-08-01', '2021-06-21', 700, 700.00, 25, 7, 7),
+(default, '2021-08-01', '2021-08-01', '2021-09-01', '2021-07-22', 800, 800.00, 25, 8, 8),
+(default, '2021-09-01', '2021-09-01', '2021-10-01', '2021-08-22', 900, 900.00, 25, 9, 9),
+(default, '2021-10-01', '2021-10-01', '2021-11-01', '2021-09-21', 1000, 1000.00, 25, 10, 10);
 
+delete from Sessions;
+alter sequence Sessions_sess_id_seq restart with 1;
 insert into Sessions values 
+-- sess_id, sess_num, start_time, end_time, sess_date, latest_cancel_date, instructor_id, course_id, launch_date, room_id
 (default, 1, '2021-11-01 14:00:00', '2021-11-01 15:00:00', '2021-11-01', '2021-10-25', 21, 10, '2021-10-01', 1),
 (default, 2, '2021-11-01 17:00:00', '2021-11-01 18:00:00', '2021-11-01', '2021-10-25', 21, 10, '2021-10-01', 2),
 (default, 3, '2021-12-01 14:00:00', '2021-12-01 15:00:00', '2021-12-01', '2021-11-24', 21, 10, '2021-10-01', 3),
@@ -213,7 +227,9 @@ insert into Sessions values
 (default, 2, '2021-10-01 11:00:00', '2021-10-01 12:00:00', '2021-10-01', '2021-09-24', 22, 8, '2021-08-01', 5),
 (default, 1, '2021-07-01 11:00:00', '2021-07-01 12:00:00', '2021-07-01', '2021-06-24', 26, 6, '2021-06-01', 6),
 (default, 1, '2021-06-01 15:00:00', '2021-06-01 16:00:00', '2021-06-01', '2021-05-25', 27, 5, '2021-05-01', 7),
-(default, 1, '2021-04-01 11:00:00', '2021-04-01 12:00:00', '2021-04-01', '2021-03-25', 29, 3, '2021-03-01', 8);
+(default, 1, '2021-04-01 11:00:00', '2021-04-01 12:00:00', '2021-04-01', '2021-03-25', 29, 3, '2021-03-01', 8),
+(default, 2, '2021-04-01 14:00:00', '2021-04-01 15:00:00', '2021-04-01', '2021-03-25', 29, 3, '2021-03-01', 9),
+(default, 3, '2021-04-01 16:00:00', '2021-04-01 17:00:00', '2021-04-01', '2021-03-25', 29, 3, '2021-03-01', 10);
 
 delete from Customers;
 alter sequence Customers_cust_id_seq restart with 1;
