@@ -127,10 +127,12 @@ RETURNS SETOF RECORD AS $$
         SELECT COUNT(*) AS registered FROM Registers
         GROUP BY sess_id
     ), RemainingSeats AS (
-        SELECT (seating_capacity - registered) AS remaining
+        SELECT (Rooms.seating_capacity - registered) AS remaining
         FROM CourseOfferings
         INNER JOIN RegistrationCount
         ON CourseOfferings.sess_id = RegistrationCount.sess_id
+        INNER JOIN Rooms
+        ON S
         GROUP BY sess_id
     )
     SELECT sess_date, DATE_PART('hour', start_time), emp_name, remaining

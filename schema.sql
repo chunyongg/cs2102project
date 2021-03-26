@@ -75,12 +75,13 @@ create table Courses (
 );
 
 create table CourseOfferings (
-	launch_date date unique,
+	offering_id serial unique,
+	launch_date date unique not null,
 	start_date date not null,
 	end_date date not null,
 	registration_deadline date not null
 		check(registration_deadline = start_date - 10),
-	registration_target integer not null,
+	target_number_registrations integer not null,
 	fees numeric(10,2) not null,
 	seating_capacity integer not null,
 	admin_id integer not null references Administrators,
@@ -113,6 +114,7 @@ create table Sessions (
 	instructor_id integer not null references Instructors,
 	course_id integer references CourseOfferings(course_id) on delete cascade,
 	launch_date date references CourseOfferings(launch_date) on delete cascade,
+	room_id integer references Rooms not null,
 	primary key(sess_num, course_id, launch_date)
 );
 
@@ -125,7 +127,7 @@ create table Customers (
 );
 
 create table CreditCards (
-	cc_number text primary key,
+	cc_number varchar(16) primary key,
 	cvv integer not null,
 	expiry_date date not null,
 	cust_id integer not null references Customers
@@ -145,7 +147,7 @@ create table Buys (
 	redemptions_left integer not null,
 	package_id integer references CoursePackages,
 	cust_id integer references Customers on delete cascade,
-	cc_number text not null references CreditCards,
+	cc_number varchar(16) not null references CreditCards,
 	primary key(cust_id, package_id)
 );
 
@@ -153,7 +155,7 @@ create table Registers (
 	register_date date not null,
 	cust_id integer references Customers on delete cascade,
 	sess_id integer references Sessions(sess_id),
-	cc_number text not null references CreditCards,
+	cc_number varchar(16) not null references CreditCards,
 	primary key(cust_id, sess_id)
 );
 
