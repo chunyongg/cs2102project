@@ -1,3 +1,4 @@
+-- RUIEY's FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 8. find_rooms: This routine is used to find all the rooms that could be used for a course session.
 -- Inputs: session date, session start hour, and session duration
@@ -5,26 +6,20 @@
 
 CREATE OR REPLACE FUNCTION find_rooms (IN sess_date DATE, IN start_time TIMESTAMP, IN duration INTEGER, OUT room_id INTEGER)
 RETURNS SETOF RECORD AS $$
-    SELECT DISTINCT room_id
-    FROM Rooms R
-    EXCEPT
-    SELECT DISTINCT C.room_id
-    FROM Conducts C
-    WHERE C.sess_date = sess_date
-    AND NOT EXISTS (
-        SELECT DISTINCT C2.room_id
-        FROM Conducts C2
-        WHERE C2.sess_date = sess_date
-        AND C2.end_time <= start_time
-        AND C2.start_time >= start_time + duration
-    ) -- end before input start_time AND start after input end_time
+    SELECT room_id FROM ROOMS R 
+    WHERE NOT EXISTS (
+        SELECT 1 FROM Conducts C
+        WHERE C.roomid = R.roomid 
+        AND C.start_time >= start_time + duration 
+        AND C.end_time <= start_time
+    ) -- does not: start after input end_time AND end before input start_time
  $$ LANGUAGE SQL
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 9. get_available_rooms: This routine is used to retrieve the availability information of rooms for a specific duration.
 -- Inputs: start date and end date
 -- Returns: a table of records consisting of the following information:
--- room identifier, room capacity, day (which is within the input date range [start date, end date]),
--- and an array of the hours that the room is available on the specified day. The output is sorted in ascending order of room identifier and day, and the array entries are sorted in ascending order of hour.
+-- room identifier, room capacity, day (which is within the input date range [start date, end date]), and an array of the hours that the room is available on the specified day.
+-- The output is sorted in ascending order of room identifier and day, and the array entries are sorted in ascending order of hour.
 
 CREATE OR REPLACE FUNCTION get_available_rooms (IN start_date DATE, IN end_date DATE, OUT room_id INT, OUT room_capacity INT, OUT day DATE, OUT hours INT[])
 RETURNS SETOF RECORD AS $$
@@ -63,19 +58,21 @@ $$ LANGUAGE SQL
 
 -- e.g. select get_available_course_packages()
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- 17. register_session: This routine is used when a customer requests to register for a session in a course offering.
+-- Inputs: customer identifier, course offering identifier, session number, and payment method (credit card or redemption from active package).
+-- If the registration transaction is valid, this routine will process the registration with the necessary updates (e.g., payment/redemption).
 
+CREATE OR REPLACE PROCEDURE register_session (cust_id INT, offer_id INT, sess_num INT, payment_method TEXT)
+AS $$
+$$ LANGUAGE SQL
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- 18. get_my_registrations: This routine is used when a customer requests to view his/her active course registrations (i.e, registrations for course sessions that have not ended).
+-- Inputs: a customer identifier
+-- Returns: a table of records with the following information for each active registration session:
+-- course name, course fees, session date, session start hour, session duration, and instructor name.
+-- The output is sorted in ascending order of session date and session start hour.
 
--- F6:
-CREATE OR REPLACE FUNCTION find_instructors (
-    IN cid INTEGER, IN session_date DATE, IN session_hour INTEGER, 
-    OUT emp_id INTEGER, OUT emp_name TEXT)
-RETURNS RECORD AS $$
-    SELECT emp_id, emp_name
-    FROM Employees
-    NATURAL JOIN Instructors
-    INNER JOIN Sessions
-    ON Instructors.emp_id = Sessions.instructor_id 
-    WHERE Sessions.course_id = cid
-    AND Sessions.sess_date = session_date
-    AND session_hour IN (SELECT DATE_PART('hour', Sessions.start_time));
-$$ LANGUAGE sql;
+CREATE OR REPLACE FUNCTION get_my_registrations (IN cust_id INT, OUT title TEXT, OUT fees INT, OUT sess_date DATE, OUT start_hour INT, OUT duration INT, OUT emp_name TEXT)
+RETURNS SETOF RECORD AS $$
+$$ LANGUAGE SQL
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
