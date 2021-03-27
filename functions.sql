@@ -45,19 +45,19 @@ END;
 $$ LANGUAGE plpgsql;
 
 --F14
+CREATE VIEW SessionsInOrder as
+    select sess_id, sess_date, start_time
+    from Sessions
+    order by (sess_date, start_time) asc;
+
 CREATE OR REPLACE FUNCTION get_my_course_package(IN cust_id integer)
 RETURNS TABLE (package_name text, price numeric, num_free_registrations integer,
 redemptions_left integer, buy_date date, title text,
 sess_date date, start_time timestamp) AS $$
 DECLARE
-    t1 Table(package_id integer);
-    t2 Table(sess_id integer);
-    t3 Table(sess_id integer, sess_date date, start_time);
-    package_id integer; -- could be a row of package id
-    c1 Cursor for (Select package_id from t1);
-    c2 Cursor for (Select sess_id from t2);
-    r Record;
-    r2 Record;
+    package_id integer;
+    p record;
+    s record;
     package_name text;
     sess_id integer;
     course_id integer;
@@ -68,32 +68,34 @@ DECLARE
     title text;
     sess_date date;
     start_time timestamp;
-BEGIN
-    t1:= (Select package_id
-        from Buys B
-        where B.cust_id = cust_id and B.redemptions_left <=1);
-    OPEN c1;
-    LOOP
-        FETCH c1 INTO r;
-        EXIT WHEN NOT FOUND;
-        package_id := r.package_id;
+begin
+    for p in Select package_id
+            from Buys B
+            where B.cust_id = cust_id
+            and B.redemptions_left <=1
+    loop
+        package_id := p.package_id;
         package_name := (select package_name from CoursePackages CP where CP.package_id = package_id);
         price := (select price from CoursePackages CP where CP.package_id = package_id);
         num_free_reg := (select num_free_registrations from CoursePackages CP where CP.package_id = package_id);
         redemptions_left := (select redemptions_left from Buys B where B.package_id = package_id);
         buy_date := (select buy_date from Buys B where B.package_id = package_id);
-        t2 := (select sess_id from Redeems R where R.package_id = package_id);
-        open c2;
-        t3 := (select sess_id, sess_date, start_time from Sessions order by (sess_date, start_time) asc);
+        for s in select sess_id
+                from Redeems R
+                where R.package_id = package_id
         loop
-            fetch c2 into r2;
-            exit when not found;
+            sess_id := s.sess_id;
             course_id := (select course_id from Sessions S where S.sess_id = sess_id);
             title := (select title from Courses C where C.title = title);
-            sess_date := (select sess_date from t3 where t3.sess_id = sess_id);
-            start_time := (select start_time from t3 where t3.start_time = start_time);
+            sess_date := (select sess_date from SessionsInOrder SIO where SIO.sess_id = sess_id);
+            start_time := (select start_time from SessionsInOrder SIO where SIO.start_time = start_time);
             return next;
         end loop;
     end loop;
 end;
 $$ LANGUAGE plpgsql;
+
+--F19
+
+
+--F20
