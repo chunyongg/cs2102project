@@ -8,16 +8,18 @@ RETURNS RECORD AS $$
     NATURAL JOIN Instructors
     INNER JOIN Sessions
     ON Instructors.emp_id = Sessions.instructor_id 
-    WHERE Sessions.course_id = cid
+	INNER JOIN CourseOfferings
+	ON Sessions.offering_id = CourseOfferings.offering_id
+    WHERE CourseOfferings.course_id = cid
     AND Sessions.sess_date = session_date
     AND session_hour IN (SELECT DATE_PART('hour', Sessions.start_time));
 $$ LANGUAGE sql;
 
 -- Testcases:
--- select * from find_instructors(10, '2021-11-01', 14);
--- select * from find_instructors(8, '2021-09-01', 9);
--- select * from find_instructors(8, '2021-10-01', 11);
--- select * from find_instructors(3, '2021-04-01', 11);
+-- select * from find_instructors(1, '2021-02-01', 10);
+-- select * from find_instructors(2, '2021-04-01', 16);
+-- select * from find_instructors(3, '2021-06-01', 17);
+-- select * from find_instructors(4, '2021-07-15', 10);
 
 -- F7:
 -- incomplete (need to add teach hours and avail hour)
