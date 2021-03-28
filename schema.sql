@@ -75,8 +75,8 @@ create table Courses (
 );
 
 create table CourseOfferings (
-	offering_id serial unique,
-	launch_date date unique not null,
+	offering_id integer primary key,
+	launch_date date not null,
 	start_date date not null,
 	end_date date not null,
 	registration_deadline date not null
@@ -85,8 +85,7 @@ create table CourseOfferings (
 	fees numeric(10,2) not null,
 	seating_capacity integer not null,
 	admin_id integer not null references Administrators,
-	course_id integer unique references Courses(course_id) on delete cascade,
-	primary key(launch_date, course_id)
+	course_id integer references Courses(course_id) on delete cascade
 );
 
 create table Rooms (
@@ -96,7 +95,7 @@ create table Rooms (
 );
 
 create table Sessions (
-	sess_id serial unique,
+	sess_id serial primary key,
 	sess_num integer not null,
 	start_time timestamp not null
 		check(start_time < end_time 
@@ -112,10 +111,8 @@ create table Sessions (
 	latest_cancel_date date
 		check(latest_cancel_date = sess_date - 7),
 	instructor_id integer not null references Instructors,
-	course_id integer references CourseOfferings(course_id) on delete cascade,
-	launch_date date references CourseOfferings(launch_date) on delete cascade,
-	room_id integer references Rooms not null,
-	primary key(sess_num, course_id, launch_date)
+	offering_id integer not null references CourseOfferings(offering_id),
+	room_id integer references Rooms not null
 );
 
 create table Customers (
