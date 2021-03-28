@@ -63,7 +63,9 @@ insert into Employees values
 (default, 'Jared Wong', '7 Pasir Panjang Road', 91841170, 'jared.wong@gmail.com', '2021-02-01', '2021-08-01'),
 (default, 'June Lim', '1 Brooke Rd', 97416583, 'june.lim@gmail.com', '2019-08-01', '2021-05-01'),
 (default, 'Historia Reiss', 'Blk 407b Fernvale Road', 82956254, 'historia.reiss@gmail.com', '2021-01-01', null),
-(default, 'Eren Yeager', '244 Westwood Ave', 97390470, 'eren.yeager@gmail.com', '2020-03-01', null);
+(default, 'Eren Yeager', '244 Westwood Ave', 97390470, 'eren.yeager@gmail.com', '2020-03-01', null),
+(default, 'Stephen Tan', '63 West Coast Rd', 92287290, 'stephen.tan@gmail.com', '2020-04-01', null),
+(default, 'Yxavion Lim', '709 Tampines Street 54', 86215290, 'yxavion.lim@gmail.com', '2020-01-01', null);
 
 delete from FullTimeEmployees;
 insert into FullTimeEmployees values
@@ -99,7 +101,9 @@ insert into PartTimeEmployees values
 (45, 27),
 (37.5, 28),
 (35, 29),
-(50, 30);
+(50, 30),
+(40, 31),
+(35, 32);
 
 delete from Administrators;
 insert into Administrators values
@@ -138,7 +142,9 @@ insert into Instructors values
 (27),
 (28),
 (29),
-(30);
+(30),
+(31),
+(32);
 
 delete from CourseAreas;
 insert into CourseAreas values
@@ -167,7 +173,9 @@ insert into PartTimeInstructors values
 ('Parallel Computing', 27),
 ('Software Engineering', 28),
 ('Data Analytics', 29),
-('Programming Languages', 30);
+('Programming Languages', 30),
+('Computer Networking', 31),
+('Database Systems', 32);
 
 -- The earliest session can start at 9am and the latest session (for each day) must end by 6pm, and no sessions are conducted between 12pm to 2pm
 -- So the maximum duration should be 7 hours
@@ -208,16 +216,16 @@ insert into CourseOfferings values
 -- Each course can be offered mutiple times per year
 -- The offerings for the same course have different launch dates
 -- Each course offering consists of one or more sessions
-(1,  '2021-01-01', '2021-01-01', '2021-02-01', '2020-12-22', 100, 100.00, 20,  1, 1), -- database, 1 session (room_id = 1, capacity = 20) 
-(2,  '2021-02-01', '2021-02-01', '2021-03-01', '2021-01-22', 100, 100.00, 20, 2, 1),  -- database, 1 session (room_id = 2, capacity = 20)
-(3,  '2021-03-01', '2021-03-01', '2021-04-01', '2021-02-19', 100, 100.00, 20, 3, 1),  -- database, 1 session (room_id = 3, capacity = 20)
-(4,  '2021-04-01', '2021-04-01', '2021-05-01', '2021-03-22', 100, 100.00, 70, 4, 2),  -- database, 2 sessions (room_id = 11 & 21, capacity = 30 + 40)
-(5,  '2021-05-01', '2021-05-01', '2021-06-01', '2021-04-21', 100, 100.00, 70, 5, 2),  -- database, 2 sessions (room_id = 12 & 22, capacity = 30 + 40)
-(6,  '2021-06-01', '2021-06-01', '2021-07-01', '2021-05-22', 100, 100.00, 30, 6, 3),  -- data analytics, 1 session (room_id = 13, capacity = 30)
-(7,  '2021-07-01', '2021-07-01', '2021-08-01', '2021-06-21', 100, 100.00, 120, 7, 4), -- programming language, 3 session (room_id = 23, 24 & 25, capacity = 40 + 40 + 40)
-(8,  '2021-08-01', '2021-08-01', '2021-09-01', '2021-07-22', 100, 100.00, 50, 8, 5),  -- parallel computing, 2 sessions (room_id = 6 & 7, capacity = 25 + 25)
-(9,  '2021-09-01', '2021-09-01', '2021-10-01', '2021-08-22', 100, 100.00, 40, 9, 6),  -- machine learning, 2 sessions (room_id = 4 & 5, capacity = 20 + 20)
-(10, '2021-10-01', '2021-10-01', '2021-11-01', '2021-09-21', 100, 100.00, 70, 10, 7); -- computer networks, 2 sessions (room_id = 16 & 17 capacity = 35 + 35)
+(1,  '2021-01-01', '2021-01-01', '2021-02-01', '2020-12-22', 20, 100.00, 20,  1, 1), -- database, 1 session (room_id = 1, capacity = 20) 
+(2,  '2021-02-01', '2021-02-01', '2021-03-01', '2021-01-22', 20, 100.00, 20, 2, 1),  -- database, 1 session (room_id = 2, capacity = 20)
+(3,  '2021-03-01', '2021-03-01', '2021-04-01', '2021-02-19', 20, 100.00, 20, 3, 1),  -- database, 1 session (room_id = 3, capacity = 20)
+(4,  '2021-04-01', '2021-04-01', '2021-05-01', '2021-03-22', 70, 100.00, 70, 4, 2),  -- database, 2 sessions (room_id = 11 & 21, capacity = 30 + 40)
+(5,  '2021-05-01', '2021-05-01', '2021-06-01', '2021-04-21', 70, 100.00, 70, 5, 2),  -- database, 2 sessions (room_id = 12 & 22, capacity = 30 + 40)
+(6,  '2021-06-01', '2021-06-01', '2021-07-01', '2021-05-22', 30, 100.00, 30, 6, 3),  -- data analytics, 1 session (room_id = 13, capacity = 30)
+(7,  '2021-07-01', '2021-07-01', '2021-08-01', '2021-06-21', 120, 100.00, 120, 7, 4), -- programming language, 3 session (room_id = 23, 24 & 25, capacity = 40 + 40 + 40)
+(8,  '2021-08-01', '2021-08-01', '2021-09-01', '2021-07-22', 50, 100.00, 50, 8, 5),  -- parallel computing, 2 sessions (room_id = 6 & 7, capacity = 25 + 25)
+(9,  '2021-09-01', '2021-09-01', '2021-10-01', '2021-08-22', 40, 100.00, 40, 9, 6),  -- machine learning, 2 sessions (room_id = 4 & 5, capacity = 20 + 20)
+(10, '2021-10-01', '2021-10-01', '2021-11-01', '2021-09-21', 70, 100.00, 70, 10, 7); -- computer networks, 2 sessions (room_id = 16 & 17 capacity = 35 + 35)
 
 delete from Sessions;
 alter sequence Sessions_sess_id_seq restart with 1;

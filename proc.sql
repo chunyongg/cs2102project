@@ -1,4 +1,9 @@
--- F6:
+-- F6 (Completed)
+-- Testcases:
+-- select * from find_instructors(1, '2021-02-01', 10);
+-- select * from find_instructors(2, '2021-04-01', 16);
+-- select * from find_instructors(3, '2021-06-01', 17);
+-- select * from find_instructors(4, '2021-07-15', 10);
 CREATE OR REPLACE FUNCTION find_instructors (
     IN cid INTEGER, IN session_date DATE, IN session_hour INTEGER, 
     OUT emp_id INTEGER, OUT emp_name TEXT)
@@ -15,12 +20,38 @@ RETURNS RECORD AS $$
     AND session_hour IN (SELECT DATE_PART('hour', Sessions.start_time));
 $$ LANGUAGE sql;
 
+-- F21 (Completed)
 -- Testcases:
--- select * from find_instructors(1, '2021-02-01', 10);
--- select * from find_instructors(2, '2021-04-01', 16);
--- select * from find_instructors(3, '2021-06-01', 17);
--- select * from find_instructors(4, '2021-07-15', 10);
+-- call update_instructor('2021-10-01', 10, 3, 27)
+-- call update_instructor('2021-10-01', 10, 3, 31)
+-- call update_instructor('2021-01-01', 1, 1, 32);
+CREATE OR REPLACE PROCEDURE update_instructor (
+    l_date DATE, coid INTEGER, s_num INTEGER, eid INTEGER
+)
+AS $$
+    WITH Specialises AS (
+        SELECT * FROM Instructors NATURAL JOIN FullTimeInstructors
+        UNION
+        SELECT * FROM Instructors NATURAL JOIN PartTimeInstructors
+    ) 
+	UPDATE Sessions
+    SET instructor_id = eid
+    FROM CourseOfferings
+    WHERE launch_date = l_date
+    AND sess_date > CURRENT_DATE
+    AND Sessions.offering_id = coid
+    AND EXISTS(
+        SELECT course_area
+        FROM Specialises
+        WHERE emp_id = instructor_id
+        AND course_area IN (
+            SELECT course_area
+            FROM Specialises
+            WHERE emp_id = eid)
+    );
+$$ LANGUAGE SQL
 
+------------------------------------------------------------------------------------------------------------
 -- F7:
 -- incomplete (need to add teach hours and avail hour)
 CREATE OR REPLACE FUNCTION get_available_instructors (
@@ -80,22 +111,6 @@ $$ LANGUAGE sql;
 
 -- Testcases:
 -- select * from get_available_course_sessions
-
--- F21
--- Works but I think need to add sth like ensure instructor updated is of course area
-CREATE OR REPLACE PROCEDURE update_instructor (
-    l_date DATE, cid INTEGER, s_num INTEGER, emp_id INTEGER
-)
-AS $$
-    UPDATE Sessions
-    SET instructor_id = emp_id
-    WHERE launch_date = l_date
-    AND course_id = cid
-    AND sess_num = s_num;
-$$ LANGUAGE SQL
-
--- Testcases:
--- select * from update_instructor('2021-10-01', 10, 3, 30)
 
 -- F22
 -- Current tables have to be updated to support this
