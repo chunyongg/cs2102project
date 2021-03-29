@@ -19,9 +19,11 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE PROCEDURE update_credit_card(IN cust_id integer,
 IN cc_number integer, IN cvv integer, IN expiry_date date)
 AS $$
-    UPDATE CreditCards
-    SET cc_number = cc_number, cvv = cvv, expiry_date = expiry_date
-    WHERE cust_id = cust_id;
+Begin
+    UPDATE CreditCards CC
+    SET CC.cc_number = cc_number, CC.cvv = cvv, CC.expiry_date = expiry_date
+    WHERE CC.cust_id = cust_id;
+end;
 $$ LANGUAGE plpgsql;
 
 --F13
@@ -94,8 +96,58 @@ begin
     end loop;
 end;
 $$ LANGUAGE plpgsql;
-
 --F19
-
+CREATE OR REPLACE PROCEDURE update_course_session(IN cust_id integer, IN offering_id integer, IN sess_id integer)
+AS $$
+declare
+    room_id integer;
+    seating_capacity integer;
+    num_registered integer;
+begin
+    room_id := (select room_id from Sessions S where S.sess_id = sess_id and S.offering_id = offering_id);
+    seating_capacity := (select seating_cpacity from Rooms R where R.room_id = room_id);
+    num_registered := (select count(*) from Registers R where R.sess_id = sess_id);
+    if (num_registered < seating_capacity) then
+        UPDATE Registers R
+        SET R.sess_id = sess_id
+        WHERE R.cust_id = cust_id;
+    Else
+        raise notice 'Session is full, update of session failed, please try another one.';
+    end if;
+end;
+$$ LANGUAGE plpgsql;
 
 --F20
+CREATE OR REPLACE PROCEDURE cancel_registration(IN cust_id integer, IN offering_id integer)
+AS $$
+declare
+    sess_id integer;
+    cancel_date Date;
+    sess_date Date;
+    price numeric;
+    refund_amt numeric;
+    package_id integer;
+    package_credit integer;
+begin
+    sess_id := (select sess_id from Registers R where R.cust_id = cust_id);
+    if (sess_id is not null) then
+        sess_date := (select sess_date from Sessions S where S.sess_id = sess_id and S.offering_id = offering_id);
+        cancel_date := current_date;
+        DELETE from Registers R
+        WHERE R.cust_id = cust_id;
+        package_id := (select package_id from Redeems R where R.cust_id = cust_id and R.sess_id = sess_id);
+        if (package_id is not null) then
+            package_credit := 1;
+            refund_amt := 0;
+        Else
+            package_credit := 0;
+            price := (select fees from CourseOfferings CO where CO.offering_id = offering_id);
+        end if;
+        if ((select date_part('day',sess_date-cancel_date)) >=7) then
+            refund_amt := price * 9/10;
+        end if;
+        INSERT INTO Cancels
+        values (cancel_date, refund_amt, package_credit, cust_id, sess_id);
+    end if;
+end;
+$$ LANGUAGE plpgsql;
