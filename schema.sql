@@ -112,7 +112,7 @@ create table Sessions (
 		check(latest_cancel_date = sess_date - 7),
 	instructor_id integer not null references Instructors,
 	offering_id integer not null references CourseOfferings(offering_id),
-	room_id integer references Rooms not null
+	room_id integer not null references Rooms
 );
 
 create table Customers (
