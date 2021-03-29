@@ -330,7 +330,7 @@ session_number := 1;
 -- Use find_instructors (Q6) to get available Instructors
 -- If no instructors, raise exception
 FOREACH item IN ARRAY _session_items LOOP
-    SELECT eid into instructor_id from find_instructors(course_id, (item).session_date, (item).session_start) LIMIT 1;
+    SELECT eid into instructor_id from SELECT find_instructors(course_id, (item).session_date, (item).session_start) LIMIT 1;
     if (instructor_id is NULL) THEN 
         RAISE EXCEPTION 'No instructors available to conduct session';
     END IF;
