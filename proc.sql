@@ -51,17 +51,50 @@ AS $$
     );
 $$ LANGUAGE SQL
 
+-- F22 (Completed)
+-- Testcases:
+-- call update_room(5, 1, 20);
+-- call update_room(5, 1, 6);
+-- call update_room(5, 1, 1);
+
+CREATE OR REPLACE PROCEDURE update_room (
+    cid INTEGER, s_num INTEGER, rid INTEGER
+)
+AS $$
+    WITH SessionRegistrations AS (
+        SELECT Sessions.sess_id, COUNT(*) AS count
+        FROM Registers
+        INNER JOIN Sessions
+        ON Registers.sess_id = Sessions.sess_id
+        GROUP BY Sessions.sess_id
+        ORDER BY Sessions.sess_id
+    ), RoomCapacities AS (
+        SELECT room_id, seating_capacity
+        FROM Rooms
+    )
+    UPDATE Sessions
+    SET room_id = rid
+    From CourseOfferings
+    WHERE course_id = cid
+    AND sess_num = s_num
+    AND sess_date > CURRENT_DATE
+    AND (
+        (SELECT count FROM SessionRegistrations)
+        <=
+        (SELECT seating_capacity FROM Rooms WHERE room_id = rid)
+    );
+$$ LANGUAGE SQL
+
+-- Set trigger to update seating capacity in course_offering when session's room is changed:
+
+
 ------------------------------------------------------------------------------------------------------------
 -- F7:
 -- incomplete (need to add teach hours and avail hour)
 CREATE OR REPLACE FUNCTION get_available_instructors (
     IN cid INTEGER, IN s_date DATE, IN e_date DATE,
-    OUT emp_id INTEGER, OUT emp_name TEXT) -- teach_hours INTEGER , avail_hours INTEGER ARRAY
+    OUT emp_id INTEGER, OUT emp_name TEXT, OUT teach_hours INTEGER) -- avail_hours INTEGER ARRAY
 RETURNS SETOF RECORD AS $$
-    SELECT course_id, start_date, end_date, emp_id, emp_name
-    FROM Sessions 
-    INNER JOIN Employees
-    ON Sessions.instructor_id = Employees.emp_id;
 $$ LANGUAGE sql;
 
 -- Testcases:
@@ -111,13 +144,3 @@ $$ LANGUAGE sql;
 
 -- Testcases:
 -- select * from get_available_course_sessions
-
--- F22
--- Current tables have to be updated to support this
-CREATE OR REPLACE PROCEDURE update_room (
-    cid INTEGER, s_num INTEGER, rid INTEGER
-)
-AS $$
-    --UPDATE ???
-    --SET ???.room_id = rid
-$$ LANGUAGE SQL
