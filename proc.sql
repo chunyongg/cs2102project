@@ -52,6 +52,7 @@ AS $$
 $$ LANGUAGE SQL
 
 -- F22 (Completed)
+-- Set trigger to update seating capacity in course_offering when session's room is changed
 -- Testcases:
 -- call update_room(5, 1, 20);
 -- call update_room(5, 1, 6);
@@ -85,8 +86,30 @@ AS $$
     );
 $$ LANGUAGE SQL
 
--- Set trigger to update seating capacity in course_offering when session's room is changed:
-
+-- F15 (Completed)
+-- Testcases:
+-- select * from get_available_course_offerings()
+CREATE OR REPLACE FUNCTION get_available_course_offerings (
+    OUT c_title TEXT, OUT c_area TEXT, OUT s_date DATE, OUT e_date DATE, 
+    OUT r_deadline DATE, OUT c_fee NUMERIC(10,2), OUT num_remaining INTEGER)
+RETURNS SETOF RECORD AS $$
+    WITH RemainingSeats AS (
+        SELECT CourseOfferings.offering_id, COUNT(Sessions.sess_id) 
+		FROM Registers
+		NATURAL JOIN Sessions
+		RIGHT JOIN CourseOfferings
+		ON Sessions.offering_id = CourseOfferings.offering_id
+		GROUP BY CourseOfferings.offering_id
+    )
+    SELECT title, course_area, start_date, end_date, registration_deadline, fees, (seating_capacity - count)
+    FROM CourseOfferings
+    INNER JOIN Courses
+    ON CourseOfferings.course_id = Courses.course_id
+	NATURAL LEFT JOIN RemainingSeats
+    WHERE CURRENT_DATE <= registration_deadline
+    AND seating_capacity > 0
+    ORDER BY (registration_deadline, title) ASC;
+$$ LANGUAGE sql;
 
 ------------------------------------------------------------------------------------------------------------
 -- F7:
@@ -99,47 +122,13 @@ $$ LANGUAGE sql;
 
 -- Testcases:
 
--- F15:
--- incomplete (need to fix remaining seats)
-CREATE OR REPLACE FUNCTION get_available_course_offerings (
-    OUT c_title TEXT, OUT c_area TEXT, OUT s_date DATE, OUT e_date DATE, 
-    OUT r_deadline DATE, OUT c_fee NUMERIC(10,2), num_remaining INTEGER)
-RETURNS SETOF RECORD AS $$
-    SELECT title, course_area, start_date, end_date, registration_deadline, fees 
-    FROM CourseOfferings
-    INNER JOIN Sessions
-    ON CourseOfferings.launch_date = Sessions.launch_date
-    INNER JOIN Courses
-    ON CourseOfferings.course_id = Courses.course_id
-    ORDER BY (registration_deadline, title);
-$$ LANGUAGE sql;
-
--- Testcases:
--- select * from get_available_course_offerings
 
 -- F16:
 -- incomplete (need to fix remaining seats)
 CREATE OR REPLACE FUNCTION get_available_course_sessions (
     OUT session_date DATE, OUT session_hour INTEGER, OUT inst_name TEXT, OUT seat_remaining INTEGER)
 RETURNS SETOF RECORD AS $$
-    WITH RegistrationCount AS (
-        SELECT COUNT(*) AS registered FROM Registers
-        GROUP BY sess_id
-    ), RemainingSeats AS (
-        SELECT (Rooms.seating_capacity - registered) AS remaining
-        FROM CourseOfferings
-        INNER JOIN RegistrationCount
-        ON CourseOfferings.sess_id = RegistrationCount.sess_id
-        INNER JOIN Rooms
-        ON S
-        GROUP BY sess_id
-    )
-    SELECT sess_date, DATE_PART('hour', start_time), emp_name, remaining
-    FROM Sessions
-    INNER JOIN Employees
-	ON Sessions.instructor_id = Employees.emp_id
-    NATURAL JOIN RemainingSeats
-    ORDER BY (sess_date, DATE_PART('hour', start_time));
+    
 $$ LANGUAGE sql;
 
 -- Testcases:
