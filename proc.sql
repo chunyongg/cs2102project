@@ -181,7 +181,7 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 CREATE
-OR REPLACE FUNCTION getSeatingCapacity(_session_items SessionInfo []) RETURNS INTEGER AS $$ DECLARE item SessionInfo;
+OR REPLACE FUNCTION getSeatingCapacity(session_items SessionInfo []) RETURNS INTEGER AS $$ DECLARE item SessionInfo;
 
 room_capacity integer;
 
@@ -189,7 +189,7 @@ capacity integer;
 
 BEGIN capacity := 0;
 
-FOREACH item IN ARRAY _session_items LOOP
+FOREACH item IN ARRAY session_items LOOP
 SELECT
     seating_capacity into room_capacity
 from
@@ -215,7 +215,7 @@ temp_date date;
 item SessionInfo;
 
 BEGIN
-FOREACH item IN ARRAY _session_items LOOP
+FOREACH item IN ARRAY session_items LOOP
     curr_date = (item).session_date;
     IF (temp_date IS NULL or curr_date < temp_date) THEN 
         temp_date := curr_date;
@@ -243,7 +243,7 @@ temp_date date;
 item SessionInfo;
 
 BEGIN
-FOREACH item IN ARRAY _session_items LOOP
+FOREACH item IN ARRAY session_items LOOP
     curr_date = (item).session_date;
     IF (temp_date IS NULL or curr_date > temp_date) THEN 
         temp_date := curr_date;
@@ -297,7 +297,7 @@ BEGIN -- For each session,
 session_number := 1;
 -- Use find_instructors (Q6) to get available Instructors
 -- If no instructors, raise exception
-FOREACH item IN ARRAY _session_items LOOP
+FOREACH item IN ARRAY session_items LOOP
     SELECT eid into instructor_id FROM find_instructors(course_id, (item).session_date, (item).session_start) LIMIT 1;
     if (instructor_id is NULL) THEN 
         RAISE EXCEPTION 'No instructors available to conduct session';
@@ -322,8 +322,7 @@ END $$ LANGUAGE PLPGSQL;
 -- Aborts if there are no sessions, session dates are in the past, seating capacity is less than target number, or no instructors
 -- are available for one or more sessions.
 -- Session end time is determined by start time and duration of course 
-CREATE
-OR REPLACE PROCEDURE add_course_offering(
+CREATE OR REPLACE PROCEDURE add_course_offering(
     offering_id integer,
     course_id integer,
     fees numeric,
@@ -345,7 +344,7 @@ duration integer;
 
 BEGIN 
 
-IF (array_length(session_items, 1) = 0) THEN 
+IF (array_length(session_items, 1) is NULL) THEN 
     RAISE EXCEPTION 'There must be at least one session';
 END IF;
 
