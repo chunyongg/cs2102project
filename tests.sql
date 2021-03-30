@@ -1,0 +1,27 @@
+-- Should fail
+-- No such course area
+CALL add_course('EC1101', 'Learn all about Economics', 'Economics', 5);
+--manager must be full time
+CALL add_employee('part_time', 'John', 'Potato Street', 93342258, 'johny@gmail.com', 3321.33, '2009-12-31', 'manager', '{"Game Design"}');
+-- admin must be full time
+CALL add_employee('part_time', 'John', 'Potato Street', 93342258, 'johny@gmail.com', 3321.33, '2009-12-31', 'administrator', '{}'); 
+-- Admin must not handle any area at time of creation
+CALL add_employee('full_time', 'John', 'Potato Street', 93342258, 'johny@gmail.com', 3321.33, '2009-12-31', 'administrator', '{"Game Design"}');
+-- Manager must manage at least one area
+CALL add_employee('full_time', 'John', 'Potato Street', 93342258, 'johny@gmail.com', 3321.33, '2009-12-31', 'manager', '{}');
+ -- Manager managing course areas cannot be removed
+CALL remove_employee(43, '2021-02-21')
+-- Employee already left
+CALL remove_employee(40, '2021-05-21')
+-- Should pass
+CALL add_course('GD1101', 'Learn all about Games', 'Game Design', 5);
+CALL add_employee('full_time', 'John', 'Potato Street', 93342258, 'johny@gmail.com', 3321.33, '2009-12-31', 'manager', '{"Game Design"}');
+CALL add_employee('full_time', 'Maynard', 'Potato Street', 93342258, 'johny@gmail.com', 3321.33, '2009-12-31', 'instructor', '{"Game Design"}');
+CALL add_employee('full_time', 'John', 'Potato Street', 93342258, 'johny@gmail.com', 3321.33, '2009-12-31', 'administrator', '{}');
+
+
+CREATE OR REPLACE PROCEDURE remove_employee(
+    eid integer,
+    depart_date date,
+    category emp_category
+) AS $$ DECLARE temp_date date;

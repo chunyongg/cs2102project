@@ -1,8 +1,8 @@
-DROP TYPE emp_type cascade;
+DROP TYPE IF EXISTS emp_type cascade;
 
-DROP TYPE emp_category cascade;
+DROP TYPE IF EXISTS emp_category cascade;
 
-DROP TYPE SessionInfo cascade;
+DROP TYPE IF EXISTS SessionInfo cascade;
 
 CREATE TYPE emp_type AS ENUM ('full_time', 'part_time');
 
@@ -15,8 +15,7 @@ CREATE TYPE SessionInfo AS (
 );
 
 -- Q1
-create
-or replace procedure add_employee(
+create or replace procedure add_employee(
     type emp_type,
     name TEXT,
     address TEXT,
@@ -29,14 +28,27 @@ or replace procedure add_employee(
 ) 
 AS $$ 
 
-DECLARE emp_id integer;
+DECLARE eid integer;
 
 temp_area text;
 
-BEGIN IF (category = 'administrator' and array_length(areas, 1) <> 0) 
+BEGIN 
+
+IF (category = 'administrator' and array_length(areas, 1) <> 0) 
 THEN 
-    RAISE exception 'Administrator must have no course areas';
+    RAISE EXCEPTION 'Administrator must have no course areas';
+ELSIF (array_length(areas, 1) IS NULL) THEN 
+    RAISE EXCEPTION 'Course area must be specified';
 END IF;
+
+IF (category = 'administrator' and type = 'part_time') THEN 
+    RAISE EXCEPTION 'Administrator must be full time';
+END IF;
+
+IF (category = 'manager' and type = 'part_time') THEN 
+    RAISE EXCEPTION 'Manager must be full time';
+END IF;
+
 
 INSERT INTO
     Employees
@@ -49,155 +61,111 @@ values
         email,
         join_date,
         null
-    ) RETURNING emp_id into emp_id;
+    ) RETURNING emp_id into eid;
 
-IF (emp_type = 'full_time') THEN
-    INSERT INTO FullTimeEmployees values(salary, emp_id);
+IF (type = 'full_time') THEN
+    INSERT INTO FullTimeEmployees values(salary, eid);
 ELSE
-    INSERT INTO PartTimeEmployees values(salary, emp_id);
+    INSERT INTO PartTimeEmployees values(salary, eid);
 END IF;
 
 IF (category = 'administrator') THEN
-    INSERT INTO Administrators values(emp_id);
+    INSERT INTO Administrators values(eid);
 ELSIF (category = 'manager') THEN
-    INSERT INTO Managers values(emp_id);
+    INSERT INTO Managers values(eid);
     FOREACH temp_area IN ARRAY areas LOOP
     UPDATE
         CourseAreas
     SET
-        manager_id = emp_id
+        manager_id = eid
     where
         course_area = temp_area;
     END LOOP;
 
 ELSE
-    INSERT INTO Instructors values(emp_id);
+    INSERT INTO Instructors values(eid);
 END IF;
 COMMIT;
 END;
 
 $$ LANGUAGE plpgsql;
 
--- Q2
-CREATE
-OR REPLACE PROCEDURE remove_employee(
-    eid integer,
-    depart_date date,
-    category emp_category
-) AS $$ DECLARE temp_date date;
-
-category text;
-
+CREATE OR REPLACE FUNCTION check_removal_condition()
+RETURNS TRIGGER AS $$
+DECLARE 
+temp_date date;
+temp_date2 date;
 BEGIN 
-IF (NOT EXISTS (SELECT 1 FROM Employees where emp_id = eid)) THEN 
-    RAISE EXCEPTION 'Employee does not exist';
+IF (OLD.depart_date IS NOT NULL AND NEW.depart_date <> OLD.depart_date) THEN
+    RAISE EXCEPTION 'Employee already removed';
 END IF;
 
-IF (category = 'administrator'
-    and NOT EXISTS (
-        SELECT
-            1
-        FROM
-            Administrators
-        where
-            emp_id = eid
-        limit
-            1
-    )
-) THEN RAISE EXCEPTION 'Administrator does not exist';
-
-ELSIF (
-    category = 'instructor'
-    and NOT EXISTS (
-        SELECT
-            1
-        FROM
-            Instructors
-        where
-            emp_id = eid
-        limit
-            1
-    )
-) THEN RAISE EXCEPTION 'Instructor does not exist';
-
-ELSIF (
-    category = 'manager'
-    and NOT EXISTS (
-        SELECT
-            1
-        FROM
-            Managers
-        where
-            emp_id = eid
-        limit
-            1
-    )
-) THEN RAISE EXCEPTION 'Manager does not exist';
-
+IF EXISTS (SELECT 1 FROM CourseAreas WHERE manager_id = OLD.emp_id) THEN 
+    RAISE EXCEPTION 'A manager managing course areas cannot be removed';
 END IF;
 
-IF (
-    category = 'manager'
-    and EXISTS (
-        SELECT
-            1
-        FROM
-            CourseAreas
-        where
-            manager_id = eid
-    )
-) THEN RAISE EXCEPTION 'You cannot remove a manager that is managing a Course Area.';
-
-END IF;
-
-IF (category = 'instructor') THEN
 SELECT
     sess_date into temp_date
 from
     Sessions
 where
-    instructor_id = eid
+    instructor_id = OLD.emp_id
 ORDER BY
     sess_date desc
 LIMIT 1;
-
-ELSIF (category = 'administrator') THEN
+IF temp_date > NEW.depart_date THEN 
+    RAISE EXCEPTION 'Instructor is teaching a session that starts after the instructor depart date';
+END IF;
 SELECT
-    registration_deadline into temp_date
+    registration_deadline into temp_date2
 from
     CourseOfferings
 where
-    admin_id = eid
+    admin_id = OLD.emp_id
 ORDER BY
-    registration_deadline
+    registration_deadline desc
 LIMIT 1;
 
+IF temp_date2 > NEW.depart_date THEN 
+    RAISE EXCEPTION 'Instructor is teaching a session that starts after the instructor depart date';
 END IF;
+END;
+$$ LANGUAGE PLPGSQL;
 
-IF (
-    category = 'instructor'
-    and temp_date > depart_date
-) THEN RAISE EXCEPTION 'Instructor is teaching a session that starts after the instructor depart date';
+DROP TRIGGER IF EXISTS check_employee_removal ON EMPLOYEES;
+CREATE TRIGGER check_employee_removal
+BEFORE UPDATE ON Employees
+FOR EACH ROW
+WHEN 
+((NEW.depart_date IS NOT NULL and OLD.depart_date IS NULL)
+OR (OLD.depart_date IS NOT NULL AND NEW.depart_date <> OLD.depart_date)
+)
+EXECUTE FUNCTION check_removal_condition();
 
-ELSIF (
-    category = 'administrator'
-    and temp_date > depart_date
-) THEN RAISE EXCEPTION 'Administrator is handling a Course Offering whose registration deadline is after the administrator departure date';
-
+-- Q2
+CREATE OR REPLACE PROCEDURE remove_employee(
+    eid integer,
+    d_date date
+) 
+AS $$
+DECLARE 
+temp_date date;
+BEGIN 
+IF (NOT EXISTS (SELECT 1 FROM Employees where emp_id = eid)) THEN 
+    RAISE EXCEPTION 'Employee does not exist';
 END IF;
 
 UPDATE
     Employees
 SET
-    depart_date = depart_date
+    depart_date = d_date
 WHERE
     emp_id = eid;
 END;
 
 $$ LANGUAGE PLPGSQL;
 
-CREATE
-OR REPLACE PROCEDURE add_course(
+CREATE OR REPLACE PROCEDURE add_course(
     title text,
     description text,
     area text,
@@ -330,7 +298,7 @@ session_number := 1;
 -- Use find_instructors (Q6) to get available Instructors
 -- If no instructors, raise exception
 FOREACH item IN ARRAY _session_items LOOP
-    SELECT eid into instructor_id from SELECT find_instructors(course_id, (item).session_date, (item).session_start) LIMIT 1;
+    SELECT eid into instructor_id FROM find_instructors(course_id, (item).session_date, (item).session_start) LIMIT 1;
     if (instructor_id is NULL) THEN 
         RAISE EXCEPTION 'No instructors available to conduct session';
     END IF;
