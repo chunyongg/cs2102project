@@ -20,6 +20,35 @@ RETURNS RECORD AS $$
     AND session_hour IN (SELECT DATE_PART('hour', Sessions.start_time));
 $$ LANGUAGE sql;
 
+-- F7 (Completed)
+-- Testcases:
+-- select * from get_available_instructors (1, '2021-01-01', '2021-05-01')
+-- select * from get_available_instructors (2, '2021-01-01', '2021-05-01')
+-- select * from get_available_instructors (3, '2021-01-01', '2021-05-01')
+CREATE OR REPLACE FUNCTION get_available_instructors (
+    IN cid INTEGER, IN s_date DATE, IN e_date DATE,
+    OUT emp_id INTEGER, OUT emp_name TEXT, OUT current_monthly_hours DOUBLE PRECISION, OUT day DATE, OUT avail_hours INTEGER[]
+)
+RETURNS SETOF RECORD AS $$
+WITH RangedSessionDates AS (
+    SELECT sess_id, sess_date AS day
+    FROM Sessions
+    WHERE sess_date BETWEEN s_date AND e_date
+), Specialises AS ( -- emp_id, course_area
+    SELECT * FROM Instructors NATURAL JOIN FullTimeInstructors
+    UNION
+    SELECT * FROM Instructors NATURAL JOIN PartTimeInstructors
+) 
+SELECT emp_id, emp_name, get_monthly_hours(emp_id, DATE_PART('month', CURRENT_DATE), DATE_PART('year', CURRENT_DATE)), day, get_avail_hours(emp_id, day)
+FROM Employees
+INNER JOIN Sessions
+ON Employees.emp_id = Sessions.instructor_id
+NATURAL JOIN Specialises
+NATURAL JOIN RangedSessionDates
+NATURAL JOIN Courses
+WHERE course_id = cid;
+$$ LANGUAGE sql;
+
 -- F15 (Completed)
 -- Testcases:
 -- select * from get_available_course_offerings()
@@ -138,12 +167,97 @@ AS $$
 $$ LANGUAGE SQL
 
 ------------------------------------------------------------------------------------------------------------
--- F7:
--- incomplete (need to add teach hours and avail hour)
-CREATE OR REPLACE FUNCTION get_available_instructors (
-    IN cid INTEGER, IN s_date DATE, IN e_date DATE,
-    OUT emp_id INTEGER, OUT emp_name TEXT, OUT teach_hours INTEGER) -- avail_hours INTEGER ARRAY
-RETURNS SETOF RECORD AS $$
+CREATE OR REPLACE FUNCTION get_monthly_hours (
+    IN eid INTEGER, IN mth DOUBLE PRECISION, IN yr DOUBLE PRECISION, 
+    OUT work_hours DOUBLE PRECISION
+)
+RETURNS DOUBLE PRECISION AS $$
+	WITH InstructorWorkRecords AS (
+        SELECT DATE_PART('year', sess_date) AS year, DATE_PART('month', sess_date) AS month, instructor_id, SUM(extract (epoch from end_time - start_time)/3600) AS total_hours
+        FROM Sessions
+        GROUP BY instructor_id, DATE_PART('year', sess_date), DATE_PART('month', sess_date)
+        ORDER BY month ASC
+    )
+    SELECT COALESCE(MAX(total_hours), 0)
+    FROM InstructorWorkRecords
+    WHERE instructor_id = eid
+    AND month = mth
+    AND year = yr;
 $$ LANGUAGE sql;
 
--- Testcases:
+
+CREATE OR REPLACE FUNCTION get_session_hours(
+    IN eid INTEGER, IN day DATE, 
+    OUT session_hours INTEGER[]
+)
+RETURNS INTEGER[] AS $$
+SELECT ARRAY(
+    SELECT * 
+    FROM generate_series(DATE_PART('hour', start_time)::INTEGER, DATE_PART('hour', end_time)::INTEGER))
+FROM Sessions
+WHERE sess_date = day
+AND instructor_id = eid
+$$ LANGUAGE sql;
+
+
+CREATE OR REPLACE FUNCTION get_avail_hours(
+    IN eid INTEGER, IN day DATE,
+    OUT avail_hours INTEGER[]
+)
+RETURNS INTEGER[] AS $$
+WITH avail_hours(array1, array2) AS (
+    VALUES (array[9,10,11,14,15,16,17], 
+        (SELECT array_agg(combined)
+        FROM (
+            SELECT unnest(session_hours) 
+            FROM get_session_hours(eid, day)
+            ) as dt(combined)
+        )
+    )
+)
+SELECT array_agg(hour) 
+FROM avail_hours, unnest(array1) hour
+WHERE hour <> all(array2)
+$$ LANGUAGE sql;
+------------------------------------------------------------------------------------------------------------
+
+-- F25:
+-- inserts the new salary payment records 
+-- returns a table of records (sorted in ascending order of employee identifier) 
+-- employee identifier, name, status (either pt or ft), number of work days, number of work hours, hourly rate, monthly salary, and salary amount paid.
+-- for pt: number of work days and monthly salary should be null
+-- for ft: number of work hours and hourly rate should be null
+CREATE OR REPLACE FUNCTION get_emp_status (
+    IN eid INTEGER, OUT status TEXT)
+RETURNS TEXT AS $$
+	WITH FT_EID AS (
+		SELECT emp_id AS fteid
+		FROM FullTimeEmployees
+	), PT_EID AS (
+        SELECT emp_id AS pteid
+		FROM PartTimeEmployees
+    )
+    SELECT 
+        CASE 
+            WHEN (eid IN (SELECT fteid FROM FT_EID)) THEN 'Full Time'
+            WHEN (eid IN (SELECT pteid FROM PT_EID)) THEN 'Part Time'
+            ELSE NULL
+        END AS status;
+$$ LANGUAGE sql;
+
+CREATE OR REPLACE FUNCTION get_pt_salary_amount (
+    IN eid INTEGER, IN yr INTEGER, IN mth INTEGER,
+    OUT pt_salary_amt NUMERIC(10,2)
+)
+RETURNS NUMERIC(10,2) AS $$
+    SELECT get_monthly_hours(eid, mth) * hourly_rate
+    FROM PartTimeEmployees
+    WHERE emp_id = eid
+$$ LANGUAGE sql;
+
+CREATE OR REPLACE PROCEDURE pay_salary (
+)
+AS $$
+$$ LANGUAGE SQL
+
+-- F26
