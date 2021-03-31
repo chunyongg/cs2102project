@@ -14,7 +14,22 @@ CREATE TYPE SessionInfo AS (
     room_id integer
 );
 
+
 -- Q1
+
+CREATE OR REPLACE FUNCTION check_is_not_admin_or_manager()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM Administrators WHERE emp_id = NEW.emp_id) OR EXISTS (SELECT 1 FROM Administrators WHERE emp_id = NEW.emp_id) THEN
+        RAISE EXCEPTION 'Part time employee must not be an administrator or manager';
+    END IF;
+END;
+$$ LANGUAGE PLPGSQL;
+DROP TRIGGER IF EXISTS check_part_time_employee ON PartTimeEmployees;
+CREATE TRIGGER check_part_time_employee
+BEFORE INSERT ON PartTimeEmployees
+FOR EACH ROW EXECUTE FUNCTION check_is_not_admin_or_manager();
+
 create or replace procedure add_employee(
     type emp_type,
     name TEXT,
@@ -41,15 +56,6 @@ ELSIF (array_length(areas, 1) IS NULL) THEN
     RAISE EXCEPTION 'Course area must be specified';
 END IF;
 
-IF (category = 'administrator' and type = 'part_time') THEN 
-    RAISE EXCEPTION 'Administrator must be full time';
-END IF;
-
-IF (category = 'manager' and type = 'part_time') THEN 
-    RAISE EXCEPTION 'Manager must be full time';
-END IF;
-
-
 INSERT INTO
     Employees
 values
@@ -69,6 +75,14 @@ ELSE
     INSERT INTO PartTimeEmployees values(salary, eid);
 END IF;
 
+IF (type = 'full_time' AND category ='instructor') THEN 
+
+END IF;
+
+IF (type = 'part_time' AND category ='instructor') THEN 
+
+END IF;
+
 IF (category = 'administrator') THEN
     INSERT INTO Administrators values(eid);
 ELSIF (category = 'manager') THEN
@@ -85,10 +99,15 @@ ELSIF (category = 'manager') THEN
 ELSE
     INSERT INTO Instructors values(eid);
 END IF;
+
 COMMIT;
 END;
 
 $$ LANGUAGE plpgsql;
+
+
+
+-- Q2
 
 CREATE OR REPLACE FUNCTION check_removal_condition()
 RETURNS TRIGGER AS $$
@@ -142,7 +161,6 @@ OR (OLD.depart_date IS NOT NULL AND NEW.depart_date <> OLD.depart_date)
 )
 EXECUTE FUNCTION check_removal_condition();
 
--- Q2
 CREATE OR REPLACE PROCEDURE remove_employee(
     eid integer,
     d_date date
@@ -317,6 +335,8 @@ FOREACH item IN ARRAY session_items LOOP
     session_number := session_number + 1;
 END LOOP;
 END $$ LANGUAGE PLPGSQL;
+
+-- Q5
 
 -- Adds a new Course Offering.
 -- Aborts if there are no sessions, session dates are in the past, seating capacity is less than target number, or no instructors
