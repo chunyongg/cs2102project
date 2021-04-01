@@ -17,7 +17,7 @@ redeemed_cust integer;
 curr_time timestamp;
 BEGIN 
 SELECT LOCALTIMESTAMP INTO curr_time; 
-IF (OLD.sess_start <= LOCALTIMESTAMP) THEN 
+IF (OLD.start_time <= LOCALTIMESTAMP) THEN 
     RAISE EXCEPTION 'Session has already started and cannot be removed';
 END IF;
 
@@ -81,9 +81,9 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION check_session_add()
 RETURNS TRIGGER AS $$ 
 DECLARE 
-course_area text;
+carea text;
 instructor_spec text;
-course_id integer;
+cid integer;
 curr_time timestamp;
 registration_deadline date;
 other_session_id integer;
@@ -92,21 +92,21 @@ capacity integer;
 BEGIN 
 
 SELECT LOCALTIMESTAMP into curr_time;
-IF (NEW.sess_start <= LOCALTIMESTAMP) THEN 
+IF (NEW.start_time <= LOCALTIMESTAMP) THEN 
     RAISE EXCEPTION 'Session must start in the future';
 END IF;
 
-SELECT course_id into course_id from CourseOfferings where offering_id = NEW.offering_id;
-SELECT course_area into course_area from Courses where course_id = course_id;
+SELECT course_id into cid from CourseOfferings where offering_id = NEW.offering_id;
+SELECT course_area into carea from Courses where course_id = cid;
 SELECT course_area into instructor_spec from FullTimeInstructors, PartTimeInstructors where emp_id = NEW.instructor_id limit 1;
-IF (instructor_spec <> course_area) THEN 
+IF (instructor_spec <> carea) THEN 
     RAISE EXCEPTION 'Instructor does not specialize in area taught';
 END IF;
 
 SELECT session_id INTO other_session_id FROM Sessions WHERE 
 sess_id <> NEW.sess_id AND instructor_id = NEW.instructor_id 
-AND sess_date = NEW.sess_date AND start_time >= NEW.sess_start 
-AND end_time <= NEW.sess_end
+AND sess_date = NEW.sess_date AND start_time >= NEW.start_time 
+AND end_time <= NEW.end_time
 limit 1;
 IF (other_session_id IS NOT NULL) THEN 
     RAISE EXCEPTION 'Instructor is already teaching at this time';
@@ -114,8 +114,8 @@ END IF;
 
 SELECT session_id into same_room_session_id FROM Sessions 
 WHERE sess_id <> NEW.sess_id AND room_id = NEW.room_id 
-AND sess_date = NEW.sess_date AND start_time >= NEW.sess_start 
-AND end_time <= NEW.sess_end
+AND sess_date = NEW.sess_date AND start_time >= NEW.start_time
+AND end_time <= NEW.end_time
 limit 1;
 if (same_room_session_id IS NOT NULL) THEN 
     RAISE EXCEPTION 'Room is occupied at this time';
