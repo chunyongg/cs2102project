@@ -87,6 +87,7 @@ create table CourseOfferings (
 	seating_capacity integer not null,
 	admin_id integer not null references Administrators,
 	course_id integer references Courses(course_id) on delete cascade
+	unique(course_id, launch_date)
 );
 
 create table Rooms (
