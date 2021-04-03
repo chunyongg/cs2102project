@@ -76,11 +76,15 @@ ELSE
 END IF;
 
 IF (type = 'full_time' AND category ='instructor') THEN 
-
+        FOREACH temp_area IN ARRAY areas LOOP
+        INSERT INTO FullTimeInstructors(DEFAULT, temp_area eid)
+        END LOOP;
 END IF;
 
 IF (type = 'part_time' AND category ='instructor') THEN 
-
+        FOREACH temp_area IN ARRAY areas LOOP
+        INSERT INTO PartTimeInstructors(DEFAULT, temp_area eid)
+        END LOOP;
 END IF;
 
 IF (category = 'administrator') THEN
