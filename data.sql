@@ -59,7 +59,7 @@ insert into Employees values
 (default, 'Joshua Chan', '1 North Bridge Road', 94563049, 'joshua.chan@gmail.com', '2018-08-01', null),
 (default, 'Justin Lim', '35 Kallang Pudding Road', 97416583, 'justin.lim@gmail.com', '2021-01-01', '2021-03-01'),
 -- part time instructors
-(default, 'Stefanie Tan', '360 Orchard Road', 93381811, 'stefanie.tan@gmail.com', '2021-01-01', '2021-10-01'),
+(default, 'Stefanie Tan', '360 Orchard Road', 93381811, 'stefanie.tan@gmail.com', '2021-01-01', '2021-11-01'),
 (default, 'Jared Wong', '7 Pasir Panjang Road', 91841170, 'jared.wong@gmail.com', '2021-02-01', '2021-08-01'),
 (default, 'June Lim', '1 Brooke Rd', 97416583, 'june.lim@gmail.com', '2019-08-01', '2021-05-01'),
 (default, 'Historia Reiss', 'Blk 407b Fernvale Road', 82956254, 'historia.reiss@gmail.com', '2021-01-01', null),
@@ -248,7 +248,8 @@ insert into Sessions values
 (default, 2, '2021-06-01 15:00:00', '2021-06-01 16:00:00', '2021-06-01', '2021-05-25', 25, 5, 22),  -- offering_id 5,  course_id = 2, capacity = 40, database (25)
 (default, 1, '2021-07-01 10:00:00', '2021-07-01 11:00:00', '2021-07-01', '2021-06-24', 30, 7, 23),  -- offering_id 7,  course_id = 4, capacity = 40, programming language (30)
 (default, 2, '2021-07-15 10:00:00', '2021-07-15 11:00:00', '2021-07-15', '2021-07-08', 30, 7, 24),  -- offering_id 7,  course_id = 4, capacity = 40, programming language (30)
-(default, 3, '2021-08-02 10:00:00', '2021-08-02 11:00:00', '2021-08-02', '2021-07-26', 30, 7, 25);  -- offering_id 7,  course_id = 4, capacity = 40, programming language (30)
+(default, 3, '2021-08-02 10:00:00', '2021-08-02 11:00:00', '2021-08-02', '2021-07-26', 30, 7, 25),  -- offering_id 7,  course_id = 4, capacity = 40, programming language (30)
+(default, 2, '2021-01-01 11:00:00', '2021-01-01 12:00:00', '2021-01-01', '2020-12-25', 25, 1, 1);
 
 delete from Customers;
 alter sequence Customers_cust_id_seq restart with 1;
@@ -305,7 +306,7 @@ insert into CreditCards values
 ('4713286671658115', 754, '2023-03-01', 22),
 ('5344835097660156', 893, '2022-02-01', 23),
 ('5392456596274919', 443, '2024-01-01', 24),
-('341189205515702', 369, '2023-12-01', 25);
+('3411892055157023', 369, '2023-12-01', 25);
 
 delete from Registers;
 insert into Registers values 

@@ -24,7 +24,6 @@ create table PartTimeEmployees(
 create table FullTimeSalary(
 	salary_amt numeric(10,2) not null,
 	payment_date date,
-	days integer not null,
 	emp_id integer references FullTimeEmployees,
 	primary key(payment_date, emp_id)
 );
@@ -56,12 +55,14 @@ create table CourseAreas (
 
 create table FullTimeInstructors(
 	course_area text not null references CourseAreas,
-	emp_id integer primary key references FullTimeEmployees references Instructors on delete cascade
+	emp_id integer references FullTimeEmployees references Instructors on delete cascade,
+	primary key(course_area, emp_id)
 );
 	
 create table PartTimeInstructors(
 	course_area text not null references CourseAreas,
-	emp_id integer primary key references PartTimeEmployees references Instructors on delete cascade
+	emp_id integer references PartTimeEmployees references Instructors on delete cascade,
+	primary key(course_area, emp_id)
 );
 
 
