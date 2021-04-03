@@ -106,6 +106,7 @@ CREATE OR REPLACE FUNCTION CHECK_SESSION_ADD() RETURNS TRIGGER AS $$
     same_room_session_id integer;
     _duration integer;
     hours_taught integer;
+    d_date date;
     BEGIN
 
     SELECT LOCALTIMESTAMP into curr_time;
@@ -135,6 +136,12 @@ CREATE OR REPLACE FUNCTION CHECK_SESSION_ADD() RETURNS TRIGGER AS $$
 
     IF (hours_taught + _duration > 30 AND EXISTS (SELECT 1 FROM PartTimeEmployees WHERE emp_id = NEW.instructor_id)) THEN
         RAISE EXCEPTION 'Part time instructor must not teach more than 30 hours in a month';
+    END IF;
+
+    SELECT depart_date INTO d_date FROM Employees WHERE emp_id = NEW.instructor_id;
+
+    IF (d_date IS NOT NULL AND d_date <= NEW.sess_date) THEN 
+        RAISE EXCEPTION 'Instructor left already';
     END IF;
 
     SELECT sess_id into same_room_session_id FROM Sessions
