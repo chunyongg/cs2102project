@@ -17,10 +17,6 @@ CREATE OR REPLACE FUNCTION CHECK_SESSION_REMOVAL() RETURNS TRIGGER AS $$
     curr_time timestamp;
     capacity integer;
     BEGIN
-    RAISE NOTICE '%', OLD.offering_id;
-        RAISE NOTICE '%', OLD.sess_date;
-    RAISE NOTICE '%', OLD.sess_num;
-        RAISE NOTICE '%', OLD.start_time;
     SELECT LOCALTIMESTAMP INTO curr_time;
     IF (OLD.start_time <= curr_time) THEN
 
