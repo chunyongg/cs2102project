@@ -49,16 +49,16 @@ FOR EACH ROW EXECUTE FUNCTION check_session_removal();
 
 
 -- Q24: add_session
-CREATE OR REPLACE FUNCTION getSessionEnd(session_start timestamp, offering_id integer) 
+CREATE OR REPLACE FUNCTION getSessionEnd(session_start timestamp, oid integer) 
 RETURNS timestamp AS $$ 
 DECLARE 
-course_id integer;
-duration integer; 
+cid integer;
+_duration integer; 
 end_time timestamp;
 BEGIN 
-select course_id into course_id from CourseOfferings where offering_id = offering_id;
-select duration into duration from Courses where course_id = course_id;
-end_time := session_start + interval '1h' * duration;
+select course_id into cid from CourseOfferings where offering_id = oid;
+select duration into _duration from Courses where course_id = cid;
+end_time := session_start + interval '1h' * _duration;
 RETURN end_time;
 END; 
 $$ LANGUAGE PLPGSQL;
@@ -80,6 +80,11 @@ INSERT INTO Sessions values(DEFAULT, session_number,session_start, session_end, 
 END;
 $$ LANGUAGE PLPGSQL;
 
+CREATE OR REPLACE VIEW InstructorSpecializations AS
+SELECT course_area, emp_id FROM PartTimeInstructors UNION 
+SELECT course_area, emp_id FROM FullTimeInstructors;
+
+
 -- Fails if: Instructor does not specialize in area, is teaching consecutive sessions, (for part time) is teaching more than 30 hours,
 -- is teaching two sessions simultaneously, room is occupied
 -- Updates capacity of course offering
@@ -87,14 +92,13 @@ CREATE OR REPLACE FUNCTION check_session_add()
 RETURNS TRIGGER AS $$ 
 DECLARE 
 carea text;
-instructor_spec text;
 cid integer;
 curr_time timestamp;
 registration_deadline date;
 other_session_id integer;
 same_room_session_id integer;
 capacity integer;
-duration integer;
+_duration integer;
 hours_taught integer;
 BEGIN 
 
@@ -104,16 +108,15 @@ IF (NEW.start_time <= LOCALTIMESTAMP) THEN
 END IF;
 
 SELECT course_id into cid from CourseOfferings where offering_id = NEW.offering_id;
-SELECT duration, course_area into duration, carea from Courses where course_id = cid;
-SELECT course_area into instructor_spec from FullTimeInstructors, PartTimeInstructors 
-where emp_id = NEW.instructor_id 
-AND course_area = carea 
-limit 1;
-IF (instructor_spec <> carea) THEN 
+SELECT duration, course_area into _duration, carea from Courses where course_id = cid;
+
+
+IF (NOT EXISTS (SELECT 1 FROM InstructorSpecializations WHERE emp_id = NEW.instructor_id AND course_area = carea)) THEN 
     RAISE EXCEPTION 'Instructor does not specialize in area taught';
 END IF;
 
-SELECT session_id INTO other_session_id FROM Sessions WHERE 
+
+SELECT sess_id INTO other_session_id FROM Sessions WHERE 
 sess_id <> NEW.sess_id AND instructor_id = NEW.instructor_id 
 AND sess_date = NEW.sess_date AND start_time >= NEW.start_time 
 AND end_time <= NEW.end_time
@@ -124,11 +127,11 @@ END IF;
 
 SELECT get_monthly_hours(NEW.instructor_id, DATE_PART('month', NEW.sess_date), DATE_PART('year', NEW.sess_date)) INTO hours_taught;
 
-IF (hours_taught + duration > 30 AND EXISTS (SELECT 1 FROM PartTimeEmployees WHERE eid = NEW.instructor_id)) THEN 
-    RAISE EXCEPTION 'Part time instructor must not teach more than 30 hours in a month'
+IF (hours_taught + _duration > 30 AND EXISTS (SELECT 1 FROM PartTimeEmployees WHERE emp_id = NEW.instructor_id)) THEN 
+    RAISE EXCEPTION 'Part time instructor must not teach more than 30 hours in a month';
 END IF;
 
-SELECT session_id into same_room_session_id FROM Sessions 
+SELECT sess_id into same_room_session_id FROM Sessions 
 WHERE sess_id <> NEW.sess_id AND room_id = NEW.room_id 
 AND sess_date = NEW.sess_date AND start_time >= NEW.start_time
 AND end_time <= NEW.end_time
@@ -141,6 +144,7 @@ SELECT seating_capacity INTO capacity FROM Rooms WHERE room_id = NEW.room_id;
 UPDATE CourseOfferings 
 SET seating_capacity = seating_capacity + capacity
 WHERE offering_id = NEW.offering_id;
+RETURN NEW;
 END;
 $$ LANGUAGE PLPGSQL;
 
