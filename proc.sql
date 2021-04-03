@@ -15,6 +15,7 @@ DECLARE
 registered_cust integer;
 redeemed_cust integer;
 curr_time timestamp;
+capacity integer;
 BEGIN 
 SELECT LOCALTIMESTAMP INTO curr_time; 
 IF (OLD.start_time <= LOCALTIMESTAMP) THEN 
@@ -32,6 +33,11 @@ limit 1;
 IF (registered_cust IS NOT NULL OR redeemed_cust IS NOT NULL) THEN 
     Raise Exception 'A session with customers cannot be removed';
 END IF;
+
+SELECT seating_capacity INTO capacity FROM Rooms WHERE room_id = OLD.room_id;
+UPDATE CourseOfferings 
+SET seating_capacity = seating_capacity - capacity
+WHERE offering_id = OLD.offering_id;
 
 END;
 $$ LANGUAGE PLPGSQL;
@@ -76,7 +82,6 @@ $$ LANGUAGE PLPGSQL;
 
 -- Fails if: Instructor does not specialize in area, is teaching consecutive sessions, (for part time) is teaching more than 30 hours,
 -- is teaching two sessions simultaneously, room is occupied
--- part time check not implemented yet
 -- Updates capacity of course offering
 CREATE OR REPLACE FUNCTION check_session_add()
 RETURNS TRIGGER AS $$ 
@@ -89,6 +94,8 @@ registration_deadline date;
 other_session_id integer;
 same_room_session_id integer;
 capacity integer;
+duration integer;
+hours_taught integer;
 BEGIN 
 
 SELECT LOCALTIMESTAMP into curr_time;
@@ -97,8 +104,11 @@ IF (NEW.start_time <= LOCALTIMESTAMP) THEN
 END IF;
 
 SELECT course_id into cid from CourseOfferings where offering_id = NEW.offering_id;
-SELECT course_area into carea from Courses where course_id = cid;
-SELECT course_area into instructor_spec from FullTimeInstructors, PartTimeInstructors where emp_id = NEW.instructor_id limit 1;
+SELECT duration, course_area into duration, carea from Courses where course_id = cid;
+SELECT course_area into instructor_spec from FullTimeInstructors, PartTimeInstructors 
+where emp_id = NEW.instructor_id 
+AND course_area = carea 
+limit 1;
 IF (instructor_spec <> carea) THEN 
     RAISE EXCEPTION 'Instructor does not specialize in area taught';
 END IF;
@@ -110,6 +120,12 @@ AND end_time <= NEW.end_time
 limit 1;
 IF (other_session_id IS NOT NULL) THEN 
     RAISE EXCEPTION 'Instructor is already teaching at this time';
+END IF;
+
+SELECT get_monthly_hours(NEW.instructor_id, DATE_PART('month', NEW.sess_date), DATE_PART('year', NEW.sess_date)) INTO hours_taught;
+
+IF (hours_taught + duration > 30 AND EXISTS (SELECT 1 FROM PartTimeEmployees WHERE eid = NEW.instructor_id)) THEN 
+    RAISE EXCEPTION 'Part time instructor must not teach more than 30 hours in a month'
 END IF;
 
 SELECT session_id into same_room_session_id FROM Sessions 
