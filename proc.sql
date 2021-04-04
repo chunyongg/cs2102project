@@ -11,7 +11,7 @@ RETURNS TABLE(room_id INT) AS $$
     EXCEPT
     SELECT distinct room_id
     FROM Sessions
-    WHERE (start_time, end_time) overlaps (input_start_time, input_start_time + interval '1h' * duration)
+    WHERE (start_time, end_time) overlaps (input_start_time, input_start_time + interval '1h' * duration - interval '1 second')
 	ORDER BY room_id;
 $$ LANGUAGE SQL
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
