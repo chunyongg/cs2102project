@@ -218,3 +218,9 @@ WHEN
 OR (OLD.depart_date IS NOT NULL AND NEW.depart_date <> OLD.depart_date)
 )
 EXECUTE FUNCTION check_removal_condition();
+
+-- Ensure CourseOffering seating capacity is valid
+-- Update is omitted from this trigger since removal of session can be permitted even if seating capacity drops below target number (F23 remove_session)
+DROP TRIGGER IF EXISTS before_offering_insert_or_update
+BEFORE INSERT ON CourseOfferings 
+FOR EACH ROW EXECUTE check_courseofferings_seating_capacity();

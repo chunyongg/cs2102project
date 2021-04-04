@@ -2,25 +2,7 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- CHUN YONG'S FUNCTIONS
 
--- F12
-DROP TYPE IF EXISTS emp_type cascade;
-
-DROP TYPE IF EXISTS emp_category cascade;
-
-DROP TYPE IF EXISTS SessionInfo cascade;
-
-CREATE TYPE emp_type AS ENUM ('full_time', 'part_time');
-
-CREATE TYPE emp_category AS ENUM ('administrator', 'manager', 'instructor');
-
-CREATE TYPE SessionInfo AS (
-    session_date date,
-    session_start timestamp,
-    room_id integer
-);
-
-
--- Q1
+-- F1
 
 create or replace procedure add_employee(
     type emp_type,
@@ -102,7 +84,7 @@ $$ LANGUAGE plpgsql;
 
 
 
--- Q2
+-- F2
 
 CREATE OR REPLACE PROCEDURE remove_employee(
     eid integer,
@@ -279,7 +261,7 @@ FOREACH item IN ARRAY session_items LOOP
 END LOOP;
 END $$ LANGUAGE PLPGSQL;
 
--- Q5
+-- F10
 
 -- Adds a new Course Offering.
 -- Aborts if there are no sessions, session dates are in the past, seating capacity is less than target number, or no instructors
@@ -297,6 +279,10 @@ CREATE OR REPLACE PROCEDURE add_course_offering(
 ) AS $$ 
 DECLARE 
 
+IF (array_length(session_items, 1) is NULL) THEN 
+    RAISE EXCEPTION 'There must be at least one session';
+END IF;
+
 seating_capacity integer;
 
 start_date date;
@@ -307,15 +293,11 @@ duration integer;
 
 BEGIN 
 
-IF (array_length(session_items, 1) is NULL) THEN 
-    RAISE EXCEPTION 'There must be at least one session';
-END IF;
+
 
 seating_capacity := getSeatingCapacity(session_items);
 
-IF (seating_capacity < target_number) THEN 
-    RAISE EXCEPTION 'Seating capacity must not be less than target registrations';
-END IF;
+
 
 SELECT getStartDate(session_items) into start_date;
 
@@ -352,6 +334,22 @@ $$ LANGUAGE plpgsql;
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+DROP TYPE IF EXISTS emp_type cascade;
+
+DROP TYPE IF EXISTS emp_category cascade;
+
+DROP TYPE IF EXISTS SessionInfo cascade;
+
+CREATE TYPE emp_type AS ENUM ('full_time', 'part_time');
+
+CREATE TYPE emp_category AS ENUM ('administrator', 'manager', 'instructor');
+
+CREATE TYPE SessionInfo AS (
+    session_date date,
+    session_start timestamp,
+    room_id integer
+);
+
 
 CREATE OR REPLACE FUNCTION check_is_not_admin_or_manager()
 RETURNS TRIGGER AS $$
@@ -408,4 +406,13 @@ END IF;
 END;
 $$ LANGUAGE PLPGSQL;
 
+CREATE OR REPLACE FUNCTION check_courseofferings_seating_capacity
+RETURNS TRIGGER AS $$
+BEGIN 
+IF (NEW.seating_capacity < NEW.target_number_registrations) THEN
+    RAISE EXCEPTION 'Seating capacity must not be less than target registrations';
+END IF;
+RETURN NEW;
+END 
+$$ LANGUAGE PLPGSQL;
 
