@@ -163,6 +163,36 @@ RETURNS TABLE(title TEXT, fees INT, sess_date DATE, start_hour INT, duration INT
     AND emp_id = instructor_id
 $$ LANGUAGE SQL
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- 26. promote_courses: This routine is used to identify potential course offerings that could be of interest to inactive customers.
+-- A customer is classified as an active customer if the customer has registered for some course offering in the last six months (inclusive of the current month);
+-- otherwise, the customer is considered to be inactive customer.
+-- Course area A is of interest to a customer C if there is some course offering in area A among the three most recent course offerings registered by C.
+-- If a customer has not yet registered for any course offering, we assume that every course area is of interest to that customer.
+-- Returns: a table of records consisting of the following information for each inactive customer:
+-- customer identifier, customer name, course area A that is of interest to the customer, course identifier of a course C in area A, course title of C,
+-- launch date of course offering of course C that still accepts registrations, course offering’s registration deadline, and fees for the course offering.
+-- The output is sorted in ascending order of customer identifier and course offering’s registration deadline.
+
+CREATE OR REPLACE FUNCTION promote_courses ()
+RETURNS TABLE(_cust_id INT, _cust_name TEXT, _course_area TEXT, _course_id INT, _title TEXT, _launch_date DATE, _registration_deadline DATE, _fees NUMERIC(10, 2)) AS $$
+    BEGIN
+		RETURN QUERY
+        WITH ActiveCustomers AS (
+
+        ),
+        WITH InactiveCustomers AS (
+            SELECT cust_id
+            FROM customers
+            EXCEPT
+            SELECT cust_id
+            FROM ActiveCustomers
+        )
+        SELECT cust_id, cust_name, course_area, course_id, title, launch_date, registration_deadline, fees
+        FROM InactiveCustomers
+        ORDER BY cust_id, registration_deadline
+    END;
+$$ LANGUAGE PLPGSQL
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 27. top_packages: This routine is used to find the top N course packages in terms of the total number of packages sold for this year
 -- (i.e., the package’s start date is within this year)
 -- Input: positive integer number N
