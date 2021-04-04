@@ -4,28 +4,6 @@
 
 --F29: view_summary_report
 
-CREATE OR REPLACE FUNCTION end_of_month(month date)
-RETURNS DATE as $$
-BEGIN
-RETURN (select (date_trunc('month', $1) + interval '1 month' - interval '1 day')::date);
-END;
-$$ language PLPGSQL;
-
-CREATE OR REPLACE FUNCTION start_of_month(month date)
-RETURNS DATE as $$
-DECLARE 
-BEGIN
-RETURN (SELECT date_trunc('month', month));
-END;
-$$ language PLPGSQL;
-
-CREATE OR REPLACE FUNCTION subtract_month( month date)
-RETURNS DATE AS $$ 
-BEGIN
-    RETURN month - interval '1 month';
-END;
-$$ LANGUAGE PLPGSQL;
-
 CREATE OR REPLACE FUNCTION get_salary(month date) 
 RETURNS NUMERIC(10,2) AS $$
 DECLARE 
@@ -152,3 +130,25 @@ $$ LANGUAGE PLPGSQL;
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION end_of_month(month date)
+RETURNS DATE as $$
+BEGIN
+RETURN (select (date_trunc('month', $1) + interval '1 month' - interval '1 day')::date);
+END;
+$$ language PLPGSQL;
+
+CREATE OR REPLACE FUNCTION start_of_month(month date)
+RETURNS DATE as $$
+DECLARE 
+BEGIN
+RETURN (SELECT date_trunc('month', month));
+END;
+$$ language PLPGSQL;
+
+-- Returns a date exactly one month ago
+CREATE OR REPLACE FUNCTION subtract_month( month date)
+RETURNS DATE AS $$ 
+BEGIN
+    RETURN month - interval '1 month';
+END;
+$$ LANGUAGE PLPGSQL;
