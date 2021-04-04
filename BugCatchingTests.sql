@@ -41,17 +41,19 @@ call buy_course_package(25, 100);
 --Q14
 -- get_my_course_package(IN cust_id integer)
 -- testcase1 -> successful
-select get_my_course_package(5);
--- testcase2 -> not successful -> user no course_package
+select get_my_course_package(5); -- // PASSED
+-- testcase2 -> not successful -> user no course_package // NOT PASSED
 select get_my_course_package(9);
--- testcase2 -> not successful -> user does not exist
+-- testcase2 -> not successful -> user does not exist // PASSED
 select get_my_course_package(50);
 
 --Q19 // need double check and change values
 -- update_course_session(IN cust_id integer,
 -- IN offering_id integer, IN sess_id integer)
 -- testcase1 -> successful
-call update_course_session(3, 6, 2);
+call update_course_session(2, 8, 7);
+-- test case -> not successful -> session is full // PASSED
+call update_course_session(1, 8, 6);
 -- testcase2 -> not successful -> user does not exist
 call update_course_session(50, 6, 2);
 -- testcase2 -> not successful -> offering does not exist

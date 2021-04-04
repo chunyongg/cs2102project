@@ -257,6 +257,16 @@ insert into Sessions values
 (default, 2, '2021-07-15 10:00:00', '2021-07-15 11:00:00', '2021-07-15', '2021-07-08', 30, 7, 24),  -- offering_id 7,  course_id = 4, capacity = 40, programming language (30)
 (default, 3, '2021-08-02 10:00:00', '2021-08-02 11:00:00', '2021-08-02', '2021-07-26', 30, 7, 25);  -- offering_id 7,  course_id = 4, capacity = 40, programming language (30)
 
+delete from Redeems;
+insert into Redeems values
+-- redeem_date, sess_id, package_id, cust_id
+-- primary key(cust_id, sess_id)
+('2020-12-01', 1, 2, 5),
+('2020-12-01', 2, 2, 5),
+('2020-12-01', 3, 2, 5),
+('2020-12-01', 4, 2, 5),
+('2020-12-01', 3, 2, 1);
+
 delete from Customers;
 alter sequence Customers_cust_id_seq restart with 1;
 insert into Customers values
