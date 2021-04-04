@@ -1,6 +1,3 @@
-drop schema public cascade;
-create schema public;
-
 create table Employees (
 	emp_id serial primary key,
 	emp_name text not null,
@@ -10,41 +7,41 @@ create table Employees (
 	join_date date not null,
 	depart_date date
 );
-	
+
 create table FullTimeEmployees (
-	monthly_salary numeric(10,2) not null,
+	monthly_salary numeric(10, 2) not null,
 	emp_id integer primary key references Employees on delete cascade
 );
 
 create table PartTimeEmployees(
-	hourly_rate numeric(10,2) not null,
+	hourly_rate numeric(10, 2) not null,
 	emp_id integer primary key references Employees on delete cascade
 );
-	
+
 create table FullTimeSalary(
-	salary_amt numeric(10,2) not null,
+	salary_amt numeric(10, 2) not null,
 	payment_date date,
 	days integer not null,
 	emp_id integer references FullTimeEmployees,
 	primary key(payment_date, emp_id)
 );
-	
+
 create table PartTimeSalary(
-	salary_amt numeric(10,2) not null,
+	salary_amt numeric(10, 2) not null,
 	payment_date date,
 	hours integer not null,
 	emp_id integer references PartTimeEmployees,
 	primary key(payment_date, emp_id)
 );
-	
+
 create table Administrators(
 	emp_id integer primary key references FullTimeEmployees on delete cascade
 );
-	
+
 create table Managers(
 	emp_id integer primary key references FullTimeEmployees on delete cascade
 );
-	
+
 create table Instructors(
 	emp_id integer primary key references Employees on delete cascade
 );
@@ -55,37 +52,40 @@ create table CourseAreas (
 );
 
 create table FullTimeInstructors(
-	course_area text not null references CourseArea,
 	emp_id integer primary key references FullTimeEmployees references Instructors on delete cascade
 );
-	
-create table PartTimeInstructors(
-	course_area text not null references CourseArea,
-	emp_id integer primary key references PartTimeEmployees references Instructors on delete cascade
+
+create table Specializations(
+	emp_id integer references Instructors on delete cascade,
+	course_area text references CourseAreas on delete cascade,
+	primary key (emp_id, course_area)
 );
 
+create table PartTimeInstructors(
+	emp_id integer primary key references PartTimeEmployees references Instructors on delete cascade
+);
 
 create table Courses (
 	course_id serial unique,
 	duration integer not null,
 	title text unique not null,
 	description text,
-	course_area text references CourseArea on delete cascade,
+	course_area text references CourseAreas on delete cascade,
 	primary key(course_id, course_area)
 );
 
 create table CourseOfferings (
-	launch_date date unique,
-	start_date date not null,
+	offering_id integer primary key,
+	launch_date date not null check(launch_date <= start_date),
+	start_date date not null check (start_date <= end_date),
 	end_date date not null,
-	registration_deadline date not null
-		check(registration_deadline = start_date - 10),
+	registration_deadline date not null check(registration_deadline <= start_date - 10),
 	target_number_registrations integer not null,
-	fees numeric(10,2) not null,
+	fees numeric(10, 2) not null,
 	seating_capacity integer not null,
 	admin_id integer not null references Administrators,
-	course_id integer unique references Courses(course_id) on delete cascade,
-	primary key(launch_date, course_id)
+	course_id integer references Courses(course_id) on delete cascade,
+	unique(course_id, launch_date)
 );
 
 create table Rooms (
@@ -95,25 +95,34 @@ create table Rooms (
 );
 
 create table Sessions (
-	sess_id serial unique,
+	sess_id serial primary key,
 	sess_num integer not null,
-	start_time timestamp not null
-		check(start_time < end_time 
-			  and date_part('hour', start_time) >= 9 
-			  and date_part('hour', start_time) not in (12, 13)
-			  and extract(dow from start_time) in (1, 2, 3, 4, 5)),
-	end_time timestamp not null
-		check (end_time > start_time
-			  and date_part('hour', end_time) <= 18
-			  and date_part('hour', end_time) not in (13, 14)
-			  and extract(dow from end_time) in (1, 2, 3, 4, 5)),
+	start_time timestamp not null check(
+		start_time < end_time
+		and date_part('hour', start_time) >= 9
+		and date_part('hour', start_time) not in (12, 13)
+		and extract(
+			dow
+			from
+				start_time
+		) in (1, 2, 3, 4, 5)
+	),
+	end_time timestamp not null check (
+		end_time > start_time
+		and date_part('hour', end_time) <= 18
+		and date_part('hour', end_time) not in (13, 14)
+		and extract(
+			dow
+			from
+				end_time
+		) in (1, 2, 3, 4, 5)
+	),
 	sess_date date not null,
-	latest_cancel_date date
-		check(latest_cancel_date = sess_date - 7),
+	latest_cancel_date date check(latest_cancel_date = sess_date - 7),
 	instructor_id integer not null references Instructors,
-	course_id integer references CourseOfferings(course_id) on delete cascade,
-	launch_date date references CourseOfferings(launch_date) on delete cascade,
-	primary key(sess_num, course_id, launch_date)
+	offering_id integer not null references CourseOfferings(offering_id),
+	room_id integer not null references Rooms,
+	unique(offering_id, sess_num)
 );
 
 create table Customers (
@@ -125,10 +134,11 @@ create table Customers (
 );
 
 create table CreditCards (
-	cc_number integer primary key,
+	cc_number varchar(16),
 	cvv integer not null,
 	expiry_date date not null,
-	cust_id integer not null references Customers
+	cust_id integer unique not null references Customers,
+	primary key(cc_number, cust_id)
 );
 
 create table CoursePackages (
@@ -145,7 +155,7 @@ create table Buys (
 	redemptions_left integer not null,
 	package_id integer references CoursePackages,
 	cust_id integer references Customers on delete cascade,
-	cc_number integer not null references CreditCards,
+	cc_number varchar(16) not null references CreditCards,
 	primary key(cust_id, package_id)
 );
 
@@ -153,15 +163,17 @@ create table Registers (
 	register_date date not null,
 	cust_id integer references Customers on delete cascade,
 	sess_id integer references Sessions(sess_id),
-	cc_number integer not null references CreditCards,
+	cc_number varchar(16) not null references CreditCards,
 	primary key(cust_id, sess_id)
 );
 
 create table Cancels (
 	cancel_date date not null,
-	refund_amt numeric(10,2) not null,
-	package_credit integer not null
-		check(package_credit = 0 or package_credit = 1),
+	refund_amt numeric(10, 2) not null,
+	package_credit integer not null check(
+		package_credit = 0
+		or package_credit = 1
+	),
 	cust_id integer references Customers,
 	sess_id integer references Sessions(sess_id),
 	primary key(cust_id, sess_id)
@@ -175,3 +187,46 @@ create table Redeems (
 	foreign key (package_id, cust_id) references Buys(package_id, cust_id),
 	primary key(cust_id, sess_id)
 );
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- VIEWS
+
+CREATE OR REPLACE VIEW SessionParticipants AS
+	SELECT cust_id, sess_id, null as package_id
+	FROM Registers
+	UNION
+	SELECT cust_id, sess_id, package_id
+	FROM Redeems;
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- TRIGGER FUNCTIONS
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+DROP TRIGGER IF EXISTS BEFORE_SESSION_REMOVAL ON SESSIONS;
+-- Rejects deletion if session already started or there are customers signed up for the session
+CREATE TRIGGER BEFORE_SESSION_REMOVAL
+BEFORE
+DELETE ON SESSIONS
+FOR EACH ROW EXECUTE FUNCTION CHECK_SESSION_REMOVAL();
+
+-- Rejects insertion if: 
+-- Instructor does not specialize in area, 
+-- is teaching consecutive sessions, 
+-- (for part time) is teaching more than 30 hours,
+ -- is teaching two sessions simultaneously, room is occupied
+ -- Updates capacity of course offering
+DROP TRIGGER IF EXISTS BEFORE_SESSION_ADD ON SESSIONS;
+CREATE TRIGGER BEFORE_SESSION_ADD
+BEFORE
+INSERT
+OR
+UPDATE ON SESSIONS
+FOR EACH ROW EXECUTE FUNCTION CHECK_SESSION_ADD();
+
+-- Updates CourseOffering seating capacity after insertion/update
+DROP TRIGGER IF EXISTS AFTER_SESSION_ADD ON SESSIONS;
+CREATE TRIGGER AFTER_SESSION_ADD AFTER
+INSERT
+OR
+UPDATE ON SESSIONS
+FOR EACH ROW EXECUTE FUNCTION AFTER_SESS_ADD();
+
+

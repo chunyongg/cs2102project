@@ -10,47 +10,7 @@ CREATE OR REPLACE PROCEDURE REMOVE_SESSION(_OFFERING_ID integer, SESSION_NUMBER 
 
 -- Removal fails if: Session has started or if there is at least one registration/redemption for the session
 
-CREATE OR REPLACE FUNCTION CHECK_SESSION_REMOVAL() RETURNS TRIGGER AS $$
-    DECLARE
-    registered_cust integer;
-    redeemed_cust integer;
-    curr_time timestamp;
-    capacity integer;
-    BEGIN
-    SELECT LOCALTIMESTAMP INTO curr_time;
-    IF (OLD.start_time <= curr_time) THEN
 
-        RAISE EXCEPTION 'Session has already started and cannot be removed';
-    END IF;
-
-    SELECT cust_id INTO registered_cust FROM Registers
-    Where sess_id = OLD.sess_id
-    limit 1;
-
-    SELECT cust_id INTO redeemed_cust FROM Redeems
-    Where sess_id = OLD.sess_id
-    limit 1;
-
-    IF (registered_cust IS NOT NULL OR redeemed_cust IS NOT NULL) THEN
-        Raise Exception 'A session with customers cannot be removed';
-    END IF;
-
-    SELECT seating_capacity INTO capacity FROM Rooms WHERE room_id = OLD.room_id;
-    UPDATE CourseOfferings
-    SET seating_capacity = seating_capacity - capacity
-    WHERE offering_id = OLD.offering_id;
-    RETURN OLD;
-    END;
-    $$ LANGUAGE PLPGSQL;
-
-
-DROP TRIGGER IF EXISTS BEFORE_SESSION_REMOVAL ON SESSIONS;
-
-
-CREATE TRIGGER BEFORE_SESSION_REMOVAL
-BEFORE
-DELETE ON SESSIONS
-FOR EACH ROW EXECUTE FUNCTION CHECK_SESSION_REMOVAL();
 
 -- Q24: add_session
 
@@ -86,9 +46,82 @@ INSTRUCTOR_ID integer, ROOM_ID integer) AS $$
 CREATE OR REPLACE VIEW INSTRUCTORSPECIALIZATIONS AS
 SELECT * FROM SPECIALIZATIONS;
 
--- Fails if: Instructor does not specialize in area, is teaching consecutive sessions, (for part time) is teaching more than 30 hours,
- -- is teaching two sessions simultaneously, room is occupied
- -- Updates capacity of course offering
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- CHUN YONG'S FUNCTIONS
+
+-- F12
+CREATE FUNCTION func_name (...)
+CREATE FUNCTION helper_function_1 (...)
+CREATE FUNCTION helper_function_2 (...)
+
+-- F14
+CREATE FUNCTION func_name (...)
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- RUI EN's FUNCTIONS
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- XINYEE's FUNCTIONS
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- MICH's FUNCTIONS
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION AFTER_SESS_ADD() RETURNS TRIGGER AS $$
+DECLARE
+old_capacity integer;
+new_capacity integer;
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+    SELECT seating_capacity INTO new_capacity FROM Rooms WHERE room_id = NEW.room_id;
+    UPDATE CourseOfferings
+    SET seating_capacity = seating_capacity + new_capacity
+    WHERE offering_id = NEW.offering_id;
+    ELSIF (TG_OP = 'UPDATE' AND NEW.room_id <> OLD.room_id AND NEW.offering_id = OLD.offering_id) THEN
+        SELECT seating_capacity INTO old_capacity FROM Rooms WHERE room_id = OLD.room_id;
+                SELECT seating_capacity INTO new_capacity FROM Rooms WHERE room_id = NEW.room_id;
+    UPDATE CourseOfferings
+    SET seating_capacity = seating_capacity - old_capacity + new_capacity
+    WHERE offering_id = NEW.offering_id;
+    END IF;
+    RETURN NULL;
+
+END;
+$$ LANGUAGE PLPGSQL;
+
+
+
+
+CREATE OR REPLACE FUNCTION CHECK_SESSION_REMOVAL() RETURNS TRIGGER AS $$
+    DECLARE
+    registered_cust integer;
+    redeemed_cust integer;
+    curr_time timestamp;
+    capacity integer;
+    BEGIN
+    SELECT LOCALTIMESTAMP INTO curr_time;
+    IF (OLD.start_time <= curr_time) THEN
+
+        RAISE EXCEPTION 'Session has already started and cannot be removed';
+    END IF;
+
+    SELECT cust_id INTO registered_cust FROM Registers
+    Where sess_id = OLD.sess_id
+    limit 1;
+
+    SELECT cust_id INTO redeemed_cust FROM Redeems
+    Where sess_id = OLD.sess_id
+    limit 1;
+
+    IF (registered_cust IS NOT NULL OR redeemed_cust IS NOT NULL) THEN
+        Raise Exception 'A session with customers cannot be removed';
+    END IF;
+
+    SELECT seating_capacity INTO capacity FROM Rooms WHERE room_id = OLD.room_id;
+    UPDATE CourseOfferings
+    SET seating_capacity = seating_capacity - capacity
+    WHERE offering_id = OLD.offering_id;
+    RETURN OLD;
+    END;
+    $$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION CHECK_SESSION_ADD() RETURNS TRIGGER AS $$
     DECLARE
@@ -152,45 +185,4 @@ CREATE OR REPLACE FUNCTION CHECK_SESSION_ADD() RETURNS TRIGGER AS $$
     $$ LANGUAGE PLPGSQL;
 
 
-CREATE OR REPLACE FUNCTION AFTER_SESS_ADD() RETURNS TRIGGER AS $$
-DECLARE
-old_capacity integer;
-new_capacity integer;
-BEGIN
-    IF (TG_OP = 'INSERT') THEN
-    SELECT seating_capacity INTO new_capacity FROM Rooms WHERE room_id = NEW.room_id;
-    UPDATE CourseOfferings
-    SET seating_capacity = seating_capacity + new_capacity
-    WHERE offering_id = NEW.offering_id;
-    ELSIF (TG_OP = 'UPDATE' AND NEW.room_id <> OLD.room_id AND NEW.offering_id = OLD.offering_id) THEN
-        SELECT seating_capacity INTO old_capacity FROM Rooms WHERE room_id = OLD.room_id;
-                SELECT seating_capacity INTO new_capacity FROM Rooms WHERE room_id = NEW.room_id;
-    UPDATE CourseOfferings
-    SET seating_capacity = seating_capacity - old_capacity + new_capacity
-    WHERE offering_id = NEW.offering_id;
-    END IF;
-    RETURN NULL;
 
-END;
-$$ LANGUAGE PLPGSQL;
-
-
-DROP TRIGGER IF EXISTS AFTER_SESSION_ADD ON SESSIONS;
-
-
-CREATE TRIGGER AFTER_SESSION_ADD AFTER
-INSERT
-OR
-UPDATE ON SESSIONS
-FOR EACH ROW EXECUTE FUNCTION AFTER_SESS_ADD();
-
-
-DROP TRIGGER IF EXISTS BEFORE_SESSION_ADD ON SESSIONS;
-
-
-CREATE TRIGGER BEFORE_SESSION_ADD
-BEFORE
-INSERT
-OR
-UPDATE ON SESSIONS
-FOR EACH ROW EXECUTE FUNCTION CHECK_SESSION_ADD();
