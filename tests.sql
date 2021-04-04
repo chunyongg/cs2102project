@@ -32,15 +32,15 @@
 -- F17
 
 -- Testing for errors:
--- call register_session(5, 4, 1, 'payment'::text) -- Error: The registration deadline has passed.
--- call register_session(2, 6, 1, 'lala'::text) -- Error: You may register for the session via payment or redemption only.
--- call register_session(9, 7, 1, 'redemption'::text) -- Error: You do not have a package to redeem sessions from.
+-- call register_session(5, 4, 1, 'payment') -- Error: The registration deadline has passed.
+-- call register_session(2, 6, 1, 'lala') -- Error: You may register for the session via payment or redemption only.
+-- call register_session(9, 7, 1, 'redemption') -- Error: You do not have a package to redeem sessions from.
 
 -- Testing for functionality:
--- call register_session(5, 5, 1, 'payment'::text) -- insert into registers
--- call register_session(6, 6, 1, 'redemption'::text) -- update buys, insert into redeems
--- call register_session(6, 6, 1, 'redemption'::text) -- Error: You have already registered for one of this courses sessions.
--- call register_session(2, 7, 1, 'redemption'::text) -- [trigger] there is no more redemptions left in the package, redemption of new session failed.
+-- call register_session(5, 5, 1, 'payment') -- insert into registers
+-- call register_session(6, 6, 1, 'redemption') -- update buys, insert into redeems
+-- call register_session(6, 6, 1, 'redemption') -- Error: You have already registered for one of this courses sessions.
+-- call register_session(2, 7, 1, 'redemption') -- [trigger] there is no more redemptions left in the package, redemption of new session failed.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- F18
 
