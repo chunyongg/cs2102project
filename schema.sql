@@ -1,6 +1,6 @@
-drop schema public cascade;
+drop schema public2 cascade;
 
-create schema public;
+create schema public2;
 
 create table Employees (
 	emp_id serial primary key,
@@ -60,10 +60,10 @@ create table FullTimeInstructors(
 );
 
 create table Specializations(
-	emp_id integer references Instructors,
-	course_area integer references CourseAreas,
+	emp_id integer references Instructors on delete cascade,
+	course_area text references CourseAreas on delete cascade,
 	primary key (emp_id, course_area)
-)
+);
 
 create table PartTimeInstructors(
 	emp_id integer primary key references PartTimeEmployees references Instructors on delete cascade
@@ -88,7 +88,7 @@ create table CourseOfferings (
 	fees numeric(10, 2) not null,
 	seating_capacity integer not null,
 	admin_id integer not null references Administrators,
-	course_id integer references Courses(course_id) on delete cascade
+	course_id integer references Courses(course_id) on delete cascade,
 	unique(course_id, launch_date)
 );
 
@@ -125,7 +125,7 @@ create table Sessions (
 	latest_cancel_date date check(latest_cancel_date = sess_date - 7),
 	instructor_id integer not null references Instructors,
 	offering_id integer not null references CourseOfferings(offering_id),
-	room_id integer not null references Rooms
+	room_id integer not null references Rooms,
 	unique(offering_id, sess_num)
 );
 
@@ -138,10 +138,11 @@ create table Customers (
 );
 
 create table CreditCards (
-	cc_number varchar(16) primary key,
+	cc_number varchar(16),
 	cvv integer not null,
 	expiry_date date not null,
-	cust_id integer unique not null references Customers
+	cust_id integer unique not null references Customers,
+	primary key(cc_number, cust_id)
 );
 
 create table CoursePackages (
