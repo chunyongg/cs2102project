@@ -76,15 +76,11 @@ ELSE
 END IF;
 
 IF (type = 'full_time' AND category ='instructor') THEN 
-        FOREACH temp_area IN ARRAY areas LOOP
-        INSERT INTO FullTimeInstructors(DEFAULT, temp_area, eid)
-        END LOOP;
+    INSERT INTO FullTimeInstructors(eid)
 END IF;
 
 IF (type = 'part_time' AND category ='instructor') THEN 
-        FOREACH temp_area IN ARRAY areas LOOP
-        INSERT INTO PartTimeInstructors(DEFAULT, temp_area, eid)
-        END LOOP;
+    INSERT INTO PartTimeInstructors(eid)
 END IF;
 
 IF (category = 'administrator') THEN
@@ -101,6 +97,9 @@ ELSIF (category = 'manager') THEN
     END LOOP;
 
 ELSE
+        FOREACH temp_area IN ARRAY areas LOOP
+            INSERT INTO SPECIALIZATIONS(eid, temp_area)
+        END LOOP;
     INSERT INTO Instructors values(eid);
 END IF;
 
