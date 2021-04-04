@@ -91,13 +91,12 @@ $$ LANGUAGE sql;
 -- select * from find_instructors (1, '2021-04-01', 10); // 25 alr departed
 -- select * from find_instructors (1, '2021-03-01', 15); // 25's last day
 CREATE OR REPLACE FUNCTION find_instructors (IN cid INTEGER, IN session_date DATE, IN session_hour INTEGER)
-RETURNS TABLE (eid INTEGER, e_name TEXT)
-AS $$
+RETURNS TABLE (eid INTEGER, e_name TEXT) AS $$
     SELECT emp_id, emp_name
     FROM Employees
-    NATURAL JOIN InstructorSpecialisation
+    NATURAL JOIN InstructorSpecializations
     INNER JOIN Courses
-    ON InstructorSpecialisation.course_area = Courses.course_area
+    ON InstructorSpecializations.course_area = Courses.course_area
     WHERE Courses.course_id = cid
     AND (depart_date IS NULL OR (depart_date IS NOT NULL AND depart_date >= session_date))
     AND session_hour = ANY(get_avail_hours_2(emp_id, session_date))
@@ -109,7 +108,7 @@ AS $$
 $$ LANGUAGE sql;
 ------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------
--- Q7
+-- F7
 -- Testcases:
 -- select * from get_available_instructors(1, '2021-01-01', '2021-01-31');
 CREATE OR REPLACE FUNCTION get_available_instructors (
@@ -117,9 +116,9 @@ IN cid INTEGER, IN s_date DATE, IN e_date DATE)
 RETURNS TABLE(emp_id INTEGER, emp_name TEXT, current_monthly_hours DOUBLE PRECISION, day DATE, avail_hours INTEGER[]) AS $$
 SELECT DISTINCT emp_id, emp_name, get_monthly_hours(emp_id, DATE_PART('month', CURRENT_DATE), DATE_PART('year', CURRENT_DATE)), sess_date, get_avail_hours(emp_id, sess_date)
 FROM Employees
-NATURAL JOIN InstructorSpecialisation
+NATURAL JOIN InstructorSpecializations
 INNER JOIN Courses
-ON InstructorSpecialisation.course_area = Courses.course_area
+ON InstructorSpecializations.course_area = Courses.course_area
 INNER JOIN CourseOfferings
 ON Courses.course_id = CourseOfferings.course_id
 INNER JOIN Sessions
@@ -132,3 +131,90 @@ AND (
 $$ LANGUAGE sql;
 ------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------
+-- F15
+-- Testcases:
+-- select * from get_available_course_offerings();
+CREATE OR REPLACE FUNCTION get_available_course_offerings ()
+RETURNS TABLE(c_title TEXT, c_area TEXT, s_date DATE, e_date DATE, r_deadline DATE, c_fee NUMERIC(10,2), num_remaining INTEGER) AS $$
+    WITH RegistrationCount AS (
+        SELECT CourseOfferings.offering_id, COUNT(Sessions.sess_id)  AS count
+		FROM SessionParticipants
+		NATURAL JOIN Sessions
+		NATURAL RIGHT JOIN CourseOfferings
+		GROUP BY CourseOfferings.offering_id
+    )
+    SELECT title, course_area, start_date, end_date, registration_deadline, fees, (CourseOfferings.seating_capacity - count)
+    FROM CourseOfferings
+    INNER JOIN Courses
+    ON CourseOfferings.course_id = Courses.course_id
+	NATURAL LEFT JOIN RegistrationCount
+    WHERE CURRENT_DATE <= registration_deadline
+    AND CourseOfferings.seating_capacity > 0
+    ORDER BY (registration_deadline, title) ASC;
+$$ LANGUAGE sql;
+------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------
+-- F16
+-- Testcases:
+-- select * from get_available_course_sessions(6);
+CREATE OR REPLACE FUNCTION get_available_course_sessions (IN oid INTEGER)
+RETURNS TABLE(session_date DATE, session_hour INTEGER, inst_name TEXT, seat_remaining INTEGER) AS $$
+    WITH RegistrationCount AS (
+        SELECT sess_id, (seating_capacity - COUNT(sess_id)) AS remaining
+		FROM SessionParticipants
+		NATURAL RIGHT JOIN Sessions
+		NATURAL JOIN Rooms
+		GROUP BY sess_id, seating_capacity
+		ORDER BY sess_id
+    )
+    SELECT sess_date, DATE_PART('hour', start_time), emp_name, remaining
+    FROM Sessions
+    INNER JOIN CourseOfferings
+    ON Sessions.offering_id = CourseOfferings.offering_id
+    INNER JOIN Employees
+    ON Sessions.instructor_id = Employees.emp_id
+    NATURAL LEFT JOIN RegistrationCount
+    WHERE CURRENT_DATE <= registration_deadline
+    AND remaining > 0
+    AND CourseOfferings.offering_id = oid
+    ORDER BY (sess_date, DATE_PART('hour', start_time)) ASC;
+$$ LANGUAGE sql;
+------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------
+-- F21
+-- Testcases:
+-- call update_instructor(9, 1, 26);
+-- call update_instructor(9, 1, 22);
+CREATE OR REPLACE PROCEDURE update_instructor (
+    oid INTEGER, s_num INTEGER, eid INTEGER
+)
+AS $$
+	UPDATE Sessions
+    SET instructor_id = eid
+	FROM Courseofferings
+	INNER JOIN Courses
+	ON Courseofferings.course_id = Courses.course_id 
+    WHERE (Sessions.offering_id = oid AND sess_num = s_num)
+    AND sess_date > CURRENT_DATE
+$$ LANGUAGE SQL;
+------------------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------------------
+-- F22
+CREATE OR REPLACE PROCEDURE update_room (
+    oid INTEGER, s_num INTEGER, rid INTEGER
+)
+AS $$
+    WITH RegistrationCount AS (
+        SELECT sess_id AS session_id, COUNT(sess_id) AS count
+		FROM SessionParticipants
+		GROUP BY sess_id
+		ORDER BY sess_id
+    )
+    UPDATE Sessions
+    SET room_id = rid
+    From CourseOfferings
+    WHERE Sessions.offering_id = oid
+    AND sess_num = s_num
+    AND sess_date > CURRENT_DATE
+    AND ((SELECT count FROM RegistrationCount WHERE session_id = sess_id) <= (SELECT seating_capacity FROM Rooms WHERE room_id = rid));
+$$ LANGUAGE SQL;
