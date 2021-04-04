@@ -66,11 +66,45 @@ begin
 end;
 $$ LANGUAGE plpgsql;
 
---F14 NEED REFINEMENT
+--F14 DONE
+-- active -> at least one used session
+-- partially active -> all redeemed but at least one redeemed session that could be refunded if cancelled
 CREATE OR REPLACE VIEW SessionsInOrder as
     select sess_id, sess_date, start_time
     from Sessions
     order by (sess_date, start_time) asc;
+
+CREATE OR REPLACE FUNCTION get_at_least_partially_active_packages(IN c_id integer)
+RETURNS TABLE (package_id integer)
+AS $$
+declare
+    curs cursor for (select * from Buys B where B.cust_id = c_id);
+    r record;
+    s record;
+begin
+    open curs;
+    loop
+        fetch curs into r;
+        exit when not found;
+        if (r.redemptions_left >= 1) then -- partially active
+            package_id := r.package_id;
+            return next;
+        else
+            -- there exist a session where registered session is at least 7 days from today
+            -- => partially active
+            for s in (select RB.sess_id
+                      from (Redeems natural join Buys) RB
+                      where RB.package_id = r.package_id
+                        and RB.latest_cancel_date >= CURRENT_DATE)
+                loop
+                    package_id := s.package_id;
+                    return next;
+                end loop;
+        end if;
+    end loop;
+    close curs;
+end;
+$$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_my_course_package_table(IN c_id integer)
 RETURNS TABLE (package_name text, price numeric, num_free_registrations integer,
@@ -78,75 +112,82 @@ redemptions_left integer, buy_date date, title text,
 sess_date date, start_time timestamp)
 AS $$
 declare
-    _package_id integer;
     p record;
     s record;
-    _package_name text;
-    _sess_id integer;
     _course_id integer;
-    _price numeric;
-    num_free_reg integer;
-    _redemptions_left integer;
-    _buy_date date;
-    _title text;
-    _sess_date date;
-    _start_time timestamp;
 begin
-    for p in Select package_id
-            from Buys B
-            where B.cust_id = c_id
-            and B.redemptions_left >= 1
+    for p in select * from get_at_least_partially_active_packages(c_id)
     loop
-        _package_id := p.package_id;
-        _package_name := (select CP.package_name from CoursePackages CP where CP.package_id = _package_id);
-        _price := (select CP.price from CoursePackages CP where CP.package_id = _package_id);
-        num_free_reg := (select CP.num_free_registrations from CoursePackages CP where CP.package_id = _package_id);
-        _redemptions_left := (select B.redemptions_left from Buys B
-            where B.package_id = _package_id and B.cust_id = c_id);
-        _buy_date := (select B.buy_date from Buys B
-            where B.package_id = _package_id and B.cust_id = c_id);
+        select CP.package_name, CP.price, CP.num_free_registrations
+        into package_name, price, num_free_registrations
+        from CoursePackages CP
+        where CP.package_id = p.package_id;
+
+        select B.redemptions_left, B.buy_date
+        into redemptions_left, buy_date
+        from Buys B
+        where B.package_id = p.package_id and B.cust_id = c_id;
+
         for s in select sess_id
-                from Redeems R
-                where R.package_id = _package_id
+            from Redeems R
+            where R.package_id = p.package_id
         loop
-            _sess_id := s.sess_id;
-            _course_id := (select S.course_id from Sessions S where S.sess_id = _sess_id);
-            _title := (select C.title from Courses C where C.title = title);
-            _sess_date := (select SIO.sess_date from SessionsInOrder SIO where SIO.sess_id = _sess_id);
-            _start_time := (select SIO.start_time from SessionsInOrder SIO where SIO.start_time = _start_time);
+            _course_id := (select SCO.course_id
+            from (Sessions natural join CourseOfferings)SCO
+            where SCO.sess_id = s
+                .sess_id);
+            title := (select C.title from Courses C where C.course_id = _course_id);
+            select SIO.sess_date, SIO.start_time
+            into sess_date, start_time
+            from SessionsInOrder SIO
+            where SIO.sess_id = s.sess_id;
             return next;
         end loop;
     end loop;
 end;
 $$ LANGUAGE plpgsql;
 
-create or replace function get_my_course_package(IN cust_id integer)
+create or replace function get_my_course_package(IN c_id integer)
 returns json as $$
 declare
-    table_result json;
+    r record;
 begin
-    table_result := (select row_to_json(get_my_course_package_table(cust_id)) from get_my_course_package_table(cust_id));
-    return table_result;
+    if ((select B.cust_id from Buys B where B.cust_id = c_id) is null) then
+        raise notice 'Customer details did not buy any Course Package, unable to retrieve Course Package.';
+    else
+        for r in (select * from get_my_course_package_table(c_id))
+        loop
+            return row_to_json(r);
+        end loop;
+    end if;
 end;
 $$ language plpgsql;
 
--- Self created function for F19 & F20
--- check if registered for any session for that offering, return the session_id else null
-create or replace function checkRegisterSession(IN cust_id integer, IN offering_id integer)
-returns integer as $$
-    select SR.sess_id
-    from (Sessions natural join Registers) SR -- by sess_id
-    where SR.offering_id = offering_id;
-$$ language sql;
+-- Trigger for when inserting Redemptions into Redeems -> need ensure it corr to redemptions left in Buys
+-- Redeem(redeem_date, sess_id, package_id, cust_id)
+CREATE OR REPLACE FUNCTION redeem_sess_warning() RETURNS TRIGGER AS $$
+declare
+    r_left integer;
+begin
+    r_left := (select B.redemptions_left
+        from Buys B
+        where B.cust_id = New.cust_id
+        and B.package_id = New.package_id);
+    if ((select count(*) from Redeems R where R.cust_id = New.cust_id
+        and R.package_id = New.package_id) < r_left) then
+        return New;
+    else
+        raise notice 'There is no more redemptions left in the package, redemption of new session failed.';
+    end if;
 
--- Self created function for F19 & F20
--- check if redeem any session for that offering, return the session_id else null
-create or replace function checkRedeemSession(IN cust_id integer, IN offering_id integer)
-returns integer as $$
-    select SR.sess_id
-    from (Sessions natural join Redeems) SR -- by sess_id
-    where SR.offering_id = offering_id;
-$$ language sql;
+end;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_cc_trigger
+BEFORE INSERT ON Redeems
+FOR EACH ROW EXECUTE FUNCTION redeem_sess_warning();
+
+-------------------------------------------------------------
 
 CREATE OR REPLACE VIEW SessionParticipants AS
     select cust_id, sess_id, null as package_id
@@ -155,26 +196,46 @@ CREATE OR REPLACE VIEW SessionParticipants AS
     select cust_id, sess_id, package_id
     from Redeems;
 
+-- Self created function for F19 & F20
+-- check if registered for any session for that offering, return the session_id else null
+create or replace function checkRegisterSession(IN cid integer, IN oid integer)
+returns integer as $$
+    select SR.sess_id
+    from (Sessions natural join Registers) SR -- by sess_id
+    where SR.offering_id = oid
+    and SR.cust_id = cid;
+$$ language sql;
+
+-- Self created function for F19 & F20 // NEED ADJUST
+-- check if redeem any session for that offering, return the session_id else null
+create or replace function checkRedeemSession(IN cid integer, IN oid integer)
+returns integer as $$
+    select SR.sess_id
+    from (Sessions natural join Redeems) SR -- by sess_id
+    where SR.offering_id = oid
+    and SR.cust_id = cid;
+$$ language sql;
+
 --F19 NEED REFINEMENT
-CREATE OR REPLACE PROCEDURE update_course_session(IN cust_id integer, IN offering_id integer, IN sess_id integer)
+CREATE OR REPLACE PROCEDURE update_course_session(IN cid integer, IN oid integer, IN sid integer)
 AS $$
 declare
-    room_id integer;
-    seating_capacity integer;
+    rid integer;
+    seat_capacity integer;
     num_registered integer;
 begin
-    room_id := (select room_id from Sessions S where S.sess_id = sess_id and S.offering_id = offering_id);
-    seating_capacity := (select seating_cpacity from Rooms R where R.room_id = room_id);
-    num_registered := (select count(*) from Registers R where R.sess_id = sess_id);
-    if (num_registered < seating_capacity) then
-        if (checkRegisterSession(cust_id, offering_id) is not null) then
-            UPDATE Registers R
-            SET R.sess_id = sess_id
-            WHERE R.cust_id = cust_id;
+    rid := (select S.room_id from Sessions S where S.sess_id = sid and S.offering_id = oid);
+    seat_capacity := (select R.seating_capacity from Rooms R where R.room_id = rid);
+    num_registered := (select count(*) from Registers R where R.sess_id = sid);
+    if (num_registered < seat_capacity) then
+        if (checkRegisterSession(cid, oid) is not null) then
+            UPDATE Registers
+            SET sess_id = sid
+            WHERE cust_id = cid;
         else
-            UPDATE Redeems R
-            SET R.sess_id = sess_id
-            WHERE R.cust_id = cust_id;
+            UPDATE Redeems
+            SET sess_id = sid
+            WHERE cust_id = cid;
         end if;
     else
         raise notice 'Session is full, update of session failed, please try another one.';
@@ -183,42 +244,41 @@ end;
 $$ LANGUAGE plpgsql;
 
 --F20 NEED REFINEMENT
-CREATE OR REPLACE PROCEDURE cancel_registration(IN cust_id integer, IN offering_id integer)
+CREATE OR REPLACE PROCEDURE cancel_registration(IN cid integer, IN oid integer)
 AS $$
 declare
-    sess_id integer;
+    _sess_id integer;
     cancel_date date;
-    sess_date date;
+    _sess_date date;
     price numeric;
     refund_amt numeric;
     package_credit integer;
 begin
     cancel_date := current_date;
-
-    if (checkRegisterSession(cust_id, offering_id) is not null) then
-        sess_id := checkRegisterSession(cust_id, offering_id);
+    if (checkRegisterSession(cid, oid) is not null) then
+        _sess_id := checkRegisterSession(cid, oid);
         package_credit := 0;
-        price := (select fees from CourseOfferings CO where CO.offering_id = offering_id);
-        sess_date := (select sess_date from Sessions S where S.sess_id = sess_id and S.offering_id = offering_id);
-        if ((select date_part('day',sess_date-cancel_date)) >=7) then
+        price := (select CO.fees from CourseOfferings CO where CO.offering_id = oid);
+        _sess_date := (select S.sess_date from Sessions S where S.sess_id = _sess_id and S.offering_id = oid);
+        if ((select date_part('day',_sess_date-cancel_date)) >=7) then
             refund_amt := price * 9/10;
         end if;
-        DELETE from Registers R
-        WHERE R.cust_id = cust_id
-        and R.sess_id = sess_id;
+        DELETE from Registers
+        WHERE cust_id = cid
+        and sess_id = _sess_id;
     end if;
 
-    if (checkRedeemSession(cust_id, offering_id) is not null) then
-        sess_id := checkRedeemSession(cust_id, offering_id);
+    if (checkRedeemSession(cid, oid) is not null) then
+        _sess_id := checkRedeemSession(cid, oid);
         refund_amt := 0;
         package_credit := 1;
-        DELETE from Redeems R
-        WHERE R.cust_id = cust_id
-        and R.sess_id = sess_id;
+        DELETE from Redeems
+        WHERE cust_id = cid
+        and sess_id = _sess_id;
     end if;
 
     INSERT INTO Cancels
-        VALUES (cancel_date, refund_amt, package_credit, cust_id, sess_id);
+        VALUES (cancel_date, refund_amt, package_credit, cid, sid);
 end;
 $$ LANGUAGE plpgsql;
 
