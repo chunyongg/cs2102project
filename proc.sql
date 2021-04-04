@@ -21,10 +21,18 @@ d_date date;
 eid integer;
 curr_date date;
 month_end date;
-work_days integer;
-last_work_day double precision;
+last_work_day integer;
+first_work_day integer;
+days_worked integer;
+total_days_in_month integer;
 BEGIN 
--- Calculate work days
+-- Calculate last work day
+-- Calculate first work day
+-- Calcualte work days
+-- Calcualte ratio as work days / total days in month
+-- Multiply as ratio over monthly salary
+-- Return record and move on
+
     SELECT current_date INTO curr_date;
     SELECT end_of_month(current_date) into month_end;
     FOR r IN SELECT * FROM FullTimeEmployees FE NATURAL JOIN EMPLOYEES E 
@@ -35,9 +43,9 @@ BEGIN
             mon_salary := r.monthly_salary;
             d_date := r.depart_date;
             IF (d_date IS NULL OR date_part('month', d_date) > date_part('month', curr_date)) THEN 
-                work_days := get_number_days(month_end);
+                last_work_day := get_number_days(month_end);
             ELSE 
-                work_days := get_number_days(d_date);
+                last_work_day := get_number_days(d_date);
             END IF;
 
             RETURN NEXT;
