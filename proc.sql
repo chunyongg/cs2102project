@@ -23,6 +23,14 @@ $$ LANGUAGE SQL
 
 CREATE OR REPLACE FUNCTION get_available_rooms (_start_date DATE, _end_date DATE)
 RETURNS TABLE(_room_id INT, _room_capacity INT, _day DATE, _hours INT[]) AS $$
+    SELECT *
+    FROM get_available_rooms_helper(_start_date, _end_date) A
+    ORDER BY A._room_id, A._day
+$$ LANGUAGE SQL
+
+-- utility function
+CREATE OR REPLACE FUNCTION get_available_rooms_helper (_start_date DATE, _end_date DATE)
+RETURNS TABLE(_room_id INT, _room_capacity INT, _day DATE, _hours INT[]) AS $$
     DECLARE
         target_room RECORD;
         current_day DATE := _start_date;
