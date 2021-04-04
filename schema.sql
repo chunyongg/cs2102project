@@ -78,8 +78,8 @@ create table Courses (
 
 create table CourseOfferings (
 	offering_id integer primary key,
-	launch_date date not null,
-	start_date date not null,
+	launch_date date not null check(launch_date <= start_date),
+	start_date date not null check (start_date <= end_date),
 	end_date date not null,
 	registration_deadline date not null check(registration_deadline <= start_date - 10),
 	target_number_registrations integer not null,
@@ -139,7 +139,7 @@ create table CreditCards (
 	cc_number varchar(16) primary key,
 	cvv integer not null,
 	expiry_date date not null,
-	cust_id integer not null references Customers
+	cust_id integer unique not null references Customers
 );
 
 create table CoursePackages (
