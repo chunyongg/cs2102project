@@ -8,7 +8,10 @@ CREATE OR REPLACE FUNCTION find_rooms (input_sess_date DATE, input_start_time TI
 RETURNS TABLE(room_id INT) AS $$
     SELECT distinct room_id
     FROM Sessions
-    WHERE NOT (start_time, end_time) overlaps (input_start_time, input_start_time + interval '1h' * duration)
+    EXCEPT
+    SELECT distinct room_id
+    FROM Sessions
+    WHERE (start_time, end_time) overlaps (input_start_time, input_start_time + interval '1h' * duration)
 	ORDER BY room_id;
 $$ LANGUAGE SQL
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
