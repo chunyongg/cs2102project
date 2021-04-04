@@ -4,16 +4,22 @@
 -- Inputs: session date, session start hour, and session duration
 -- Returns: a table of room identifiers.
 
-CREATE OR REPLACE FUNCTION find_rooms (IN sess_date DATE, IN start_time TIMESTAMP, IN duration INTEGER, OUT room_id INTEGER)
-RETURNS SETOF RECORD AS $$
-    SELECT room_id FROM ROOMS R 
-    WHERE NOT EXISTS (
-        SELECT 1 FROM Conducts C
-        WHERE C.roomid = R.roomid 
-        AND C.start_time >= start_time + duration 
-        AND C.end_time <= start_time
-    ) -- does not: start after input end_time AND end before input start_time
- $$ LANGUAGE SQL
+CREATE OR REPLACE FUNCTION find_rooms (input_sess_date DATE, input_start_time TIMESTAMP, duration INT)
+RETURNS TABLE(room_id INT) AS $$
+    SELECT distinct room_id
+    FROM Sessions
+    WHERE NOT (start_time, end_time) overlaps (input_start_time, input_start_time + interval '1h' * duration)
+	ORDER BY room_id;
+$$ LANGUAGE SQL
+
+-- testcases:
+-- data includes room 1 (used on 2021-01-01 from 9am to 10am) and all other rooms (not used on 2021-01-01)
+-- select find_rooms('2021-01-01', '2021-01-01 05:00:00', 4) -- room 1 + all other rooms are available
+-- select find_rooms('2021-01-01', '2021-01-01 06:00:00', 4) -- all other rooms are available
+-- select find_rooms('2021-01-01', '2021-01-01 09:00:00', 4) -- all other rooms are available
+-- select find_rooms('2021-01-01', '2021-01-01 09:00:01', 4) -- all other rooms are available
+-- select find_rooms('2021-01-01', '2021-01-01 09:59:59', 4) -- all other rooms are available
+-- select find_rooms('2021-01-01', '2021-01-01 10:00:00', 4) -- room 1 + all other rooms are available
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 9. get_available_rooms: This routine is used to retrieve the availability information of rooms for a specific duration.
 -- Inputs: start date and end date
@@ -21,18 +27,47 @@ RETURNS SETOF RECORD AS $$
 -- room identifier, room capacity, day (which is within the input date range [start date, end date]), and an array of the hours that the room is available on the specified day.
 -- The output is sorted in ascending order of room identifier and day, and the array entries are sorted in ascending order of hour.
 
-CREATE OR REPLACE FUNCTION get_available_rooms (IN start_date DATE, IN end_date DATE, OUT room_id INT, OUT room_capacity INT, OUT day DATE, OUT hours INT[])
-RETURNS SETOF RECORD AS $$
+CREATE OR REPLACE FUNCTION get_available_rooms (_start_date DATE, _end_date DATE)
+RETURNS TABLE(_room_id INT, _room_capacity INT, _day DATE, _hours INT[]) AS $$
     DECLARE
-        day DATE;
+        target_room RECORD;
+        current_day DATE := _start_date;
+        unavail_row RECORD;
+        all_hours INT[] := array[9,10,11,14,15,16,17];
+        avail_hours INT[] := all_hours;
+		unavail_hours INT[];
     BEGIN
-        day := start_date
-        LOOP
-            EXIT WHEN day > end_date;
-            SELECT room_id, seating_capacity, day, hours;
-            day := day + 1;
+        FOR target_room in (SELECT * FROM Rooms) LOOP
+            LOOP
+                EXIT WHEN current_day > _end_date;
+                
+                FOR unavail_row IN (SELECT * FROM Sessions WHERE sess_date = current_day AND room_id = target_room.room_id) LOOP
+                    unavail_hours := array(
+                        SELECT date_part('hour', unavail_ref)
+                        FROM generate_series(
+                            unavail_row.start_time::timestamp,
+                            unavail_row.end_time::timestamp - '1 hour'::interval,
+                            '1 hour'::interval) unavail_ref order by 1
+                        )::int[];
+                        
+                    avail_hours := array(select unnest(avail_hours) except select unnest(unavail_hours));
+                    
+                END LOOP;
+
+                RETURN QUERY
+                SELECT target_room.room_id, target_room.seating_capacity, current_day, avail_hours;
+                
+                current_day := current_day + 1;
+                avail_hours := all_hours;
+            END LOOP;
+			current_day := _start_date;
+        END LOOP;
     END;
-$$ LANGUAGE SQL
+$$ LANGUAGE PLPGSQL
+
+-- testcases
+-- select get_available_rooms('2021-01-04', '2021-01-04')
+-- select get_available_rooms('2021-01-08', '2021-01-08')
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 11. add_course_package: This routine is used to add a new course package for sale.
 -- Inputs: package name, number of free course sessions, start and end date indicating the duration that the promotional package is available for sale, and the price of the package.
@@ -44,35 +79,204 @@ AS $$
         VALUES (package_name, num_free_registrations, sale_start_date, sale_end_date, price);
 $$ LANGUAGE SQL
 
--- e.g. call add_course_package ('Valentines Day Sales', 2, '2021-02-01', '2021-11-01', 4000);
+-- testcases:
+-- call add_course_package ('Valentines Day Sale', 2, '2021-02-01', '2021-02-14', 2222)
+
+-- undo addition:
+-- 1. delete from CoursePackages where package_name='Valentines Day Sale'
+-- 2. alter sequence CoursePackages_package_id_seq restart with 11
+-- 3. select * from CoursePackages
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 12. get_available_course_packages: This routine is used to retrieve the course packages that are available for sale.
 -- Returns: a table of records with the following information for each available course package:
 -- package name, number of free course sessions, end date for promotional package, and the price of the package.
 
-CREATE OR REPLACE FUNCTION get_available_course_packages (OUT package_name TEXT, OUT num_free_registrations INT, OUT sale_end_date DATE, OUT price NUMERIC)
-RETURNS SETOF RECORD AS $$
+CREATE OR REPLACE FUNCTION get_available_course_packages ()
+RETURNS TABLE(package_name TEXT, num_free_registrations INT, sale_end_date DATE, price NUMERIC(10, 2)) AS $$
     SELECT package_name, num_free_registrations, sale_end_date, price
     FROM CoursePackages
+    WHERE CURRENT_DATE BETWEEN sale_start_date AND sale_end_date
 $$ LANGUAGE SQL
 
--- e.g. select get_available_course_packages()
+-- testcases
+-- select get_available_course_packages() - returns 2021 Sale and April Flash Sale since we're querying in April 2021
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 17. register_session: This routine is used when a customer requests to register for a session in a course offering.
 -- Inputs: customer identifier, course offering identifier, session number, and payment method (credit card or redemption from active package).
 -- If the registration transaction is valid, this routine will process the registration with the necessary updates (e.g., payment/redemption).
 
-CREATE OR REPLACE PROCEDURE register_session (cust_id INT, offer_id INT, sess_num INT, payment_method TEXT)
+-- note
+-- For each course offered by the company, a customer can register for at most one of its sessions before its registration deadline
+
+CREATE OR REPLACE PROCEDURE register_session (_cust_id INT, _offering_id INT, _sess_num INT, _payment_method TEXT)
 AS $$
-$$ LANGUAGE SQL
+    DECLARE
+        target_sess_id INT;
+        target_registration_deadline DATE;
+        target_num_sess_registered INT;
+        target_cc_number VARCHAR;
+        target_redemptions_left INT;
+        target_package_id INT;
+    BEGIN
+		SELECT sess_id
+		INTO target_sess_id
+		FROM Sessions
+		WHERE offering_id = _offering_id
+		AND sess_num = _sess_num;
+
+		SELECT registration_deadline
+		INTO target_registration_deadline
+		FROM CourseOfferings
+		WHERE offering_id = _offering_id;
+
+		SELECT count(*)
+		INTO target_num_sess_registered
+		FROM SessionParticipants
+		WHERE sess_id in (
+			SELECT Sessions.sess_id
+			FROM Sessions
+			WHERE Sessions.offering_id = _offering_id
+		)
+		AND cust_id = _cust_id;
+			
+        IF CURRENT_DATE > target_registration_deadline THEN
+            raise exception 'Error: The registration deadline has passed.';
+        ELSIF target_num_sess_registered > 0 THEN
+            raise exception 'Error: You have already registered for one of this courses sessions.';
+        ELSIF _payment_method = 'payment' THEN
+            SELECT cc_number INTO target_cc_number FROM CreditCards WHERE CreditCards.cust_id = _cust_id;
+            INSERT INTO Registers VALUES (CURRENT_DATE, _cust_id, target_sess_id, target_cc_number);
+        ELSIF _payment_method = 'redemption' THEN
+            SELECT redemptions_left, package_id INTO target_redemptions_left, target_package_id FROM Buys WHERE cust_id = _cust_id ORDER BY redemptions_left desc LIMIT 1;
+			IF target_package_id is null THEN
+				raise exception 'Error: You do not have a package to redeem sessions from.';
+            ELSIF target_redemptions_left = 0 THEN
+                raise exception 'Error: You have already fully redeemed sessions from the package.';
+            END IF;
+            UPDATE Buys SET redemptions_left = redemptions_left - 1 WHERE cust_id = _cust_id;
+            INSERT INTO Redeems VALUES (CURRENT_DATE, target_sess_id, target_package_id, _cust_id);
+        ELSE
+            raise exception 'Error: You may register for the session via payment or redemption only.';
+        END IF;
+    END;
+$$ LANGUAGE PLPGSQL
+
+-- testcases
+-- call register_session(5, 4, 1, 'payment'::text) -- Error: The registration deadline has passed.
+-- call register_session(2, 6, 1, 'lala'::text) -- Error: You may register for the session via payment or redemption only.
+-- call register_session(9, 7, 1, 'redemption'::text) -- Error: You do not have a package to redeem sessions from.
+
+-- call register_session(5, 5, 1, 'payment'::text) -- insert into registers
+-- call register_session(6, 6, 1, 'redemption'::text) -- update buys, insert into redeems
+-- call register_session(6, 6, 1, 'redemption'::text) -- Error: You have already registered for one of this courses sessions.
+-- call register_session(2, 7, 1, 'redemption'::text) -- [trigger] there is no more redemptions left in the package, redemption of new session failed.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- 18. get_my_registrations: This routine is used when a customer requests to view his/her active course registrations (i.e, registrations for course sessions that have not ended).
+-- 18. get_my_registrations: This routine is used when a customer requests to view his/her active course registrations
+-- (i.e, registrations for course sessions that have not ended).
 -- Inputs: a customer identifier
 -- Returns: a table of records with the following information for each active registration session:
 -- course name, course fees, session date, session start hour, session duration, and instructor name.
 -- The output is sorted in ascending order of session date and session start hour.
 
-CREATE OR REPLACE FUNCTION get_my_registrations (IN cust_id INT, OUT title TEXT, OUT fees INT, OUT sess_date DATE, OUT start_hour INT, OUT duration INT, OUT emp_name TEXT)
-RETURNS SETOF RECORD AS $$
+CREATE OR REPLACE FUNCTION get_my_registrations (input_cust_id INT)
+RETURNS TABLE(title TEXT, fees INT, sess_date DATE, start_hour INT, duration INT, emp_name TEXT) AS $$
+    SELECT title, fees, sess_date, date_part('hour', start_time) as start_hour, duration, emp_name
+    FROM Courses natural join CourseOfferings natural join Sessions natural join Employees
+    WHERE sess_id in (SELECT R.sess_id FROM SessionParticipants R WHERE R.cust_id = input_cust_id)
+    AND emp_id = instructor_id
 $$ LANGUAGE SQL
+
+-- testcases
+-- select get_my_registrations(1) - returns 2 records
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- 27. top_packages: This routine is used to find the top N course packages in terms of the total number of packages sold for this year
+-- (i.e., the package’s start date is within this year)
+-- Input: positive integer number N
+-- Returns: a table of records consisting of the following information for each of the top N course packages:
+-- package identifier, number of included free course sessions, price of package, start date, end date, and number of packages sold.
+-- The output is sorted in descending order of number of packages sold followed by descending order of price of package.
+-- In the event that there are multiple packages that tie for the top Nth position, all these packages should be included in the output records;
+-- thus, the output table could have more than N records.
+-- It is also possible for the output table to have fewer than N records if N is larger than the number of packages launched this year.
+
+CREATE OR REPLACE FUNCTION top_packages (n INT)
+RETURNS TABLE(_package_id INT, _num_free_registrations INT, _price NUMERIC(10,2), _sale_start_date DATE, _sale_end_date DATE, _num_sold INT) AS $$
+    BEGIN
+		RETURN QUERY
+        WITH Ranks AS (
+            SELECT B.package_id, count(B.package_id)::int as num_sold, RANK () OVER (ORDER BY count(B.package_id) DESC) num_rank
+            FROM Buys B
+            GROUP BY B.package_id
+        )
+        SELECT package_id, num_free_registrations, price, sale_start_date, sale_end_date, num_sold
+        FROM CoursePackages natural join Ranks
+        WHERE num_rank <= n
+        ORDER BY num_sold desc, price desc;
+    END;
+$$ LANGUAGE PLPGSQL
+
+-- testcases
+-- select top_packages(4) - returns packages 6,1,7,2
+-- select top_packages(3) - returns packages 6,1,7,2
+-- select top_packages(2) - returns packages 6,1
+-- select top_packages(2) - returns packages 6
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- 28. popular_courses: This routine is used to find the popular courses offered this year (i.e., start date is within this year).
+-- A course is popular if the course has at least two offerings this year, and for every pair of offerings of the course this year,
+-- the offering with the later start date has a higher number of registrations than that of the offering with the earlier start date.
+-- Returns: a table of records consisting of the following information for each popular course:
+-- course identifier, course title, course area, number of offerings this year, and number of registrations for the latest offering this year.
+-- The output is sorted in descending order of the number of registrations for the latest offering this year followed by in ascending order of course identifier.
+
+CREATE OR REPLACE FUNCTION popular_courses ()
+RETURNS TABLE(_course_id INT, _title TEXT, _course_area TEXT, _num_offerings INT, _num_registrations INT) AS $$
+    BEGIN
+        RETURN QUERY
+        WITH HighlyOfferedCourses AS ( -- courses with at least two offerings
+            SELECT course_id, count(course_id) as num_offerings
+            FROM CourseOfferings
+            GROUP BY course_id
+            HAVING count(course_id) >= 2
+        ), RelevantOfferings AS ( -- offerings of HighlyOfferedCourses, along with their dates and num_registrations
+            SELECT course_id, offering_id, start_date, get_num_registrations_of_offering(offering_id) as num_registrations
+            FROM CourseOfferings
+            WHERE course_id in (SELECT course_id FROM HighlyOfferedCourses)
+        ), ComparedOfferings AS (
+            SELECT R.course_id as R_course_id, R.offering_id as R_offering_id, R.start_date as R_start_date, R.num_registrations as R_num_registrations,
+            R2.course_id as R2_course_id, R2.offering_id as R2_offering_id, R2.start_date as R2_start_date, R2.num_registrations as R2_num_registrations
+            FROM RelevantOfferings R, RelevantOfferings R2
+            WHERE R.course_id = R2.course_id
+            AND R.offering_id <> R2.offering_id
+            AND R.start_date <= R2.start_date
+        ), PopularCourses AS (
+            SELECT r_course_id as course_id
+            FROM ComparedOfferings
+            EXCEPT
+            SELECT r_course_id
+            FROM ComparedOfferings
+            WHERE r_course_id = r2_course_id
+            AND r_num_registrations > r2_num_registrations
+        ), LatestOfferings AS (
+            SELECT course_id, max(start_date) as latest_date
+            FROM CourseOfferings
+            GROUP BY course_id
+        ), LatestRegistrations AS (
+            SELECT C.course_id, get_num_registrations_of_offering(C.offering_id) as num_registrations
+            FROM CourseOfferings C natural join LatestOfferings L
+            WHERE C.start_date = L.latest_date
+        )
+        SELECT course_id, title, course_area, num_offerings, num_registrations
+        FROM PopularCourses natural join Courses natural join HighlyOfferedCourses natural join LatestRegistrations;
+    END;
+$$ LANGUAGE PLPGSQL
+
+-- utility function
+CREATE OR REPLACE FUNCTION get_num_registrations_of_offering (_offering_id INT)
+RETURNS INT AS $$
+    SELECT count(*) FILTER (WHERE sess_id in (SELECT sess_id FROM Sessions WHERE offering_id = _offering_id))
+    FROM SessionParticipants 
+$$ LANGUAGE SQL
+
+-- testcases
+-- select popular_courses
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
