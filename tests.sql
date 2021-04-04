@@ -2,14 +2,14 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- F8
 
--- Note: data includes room 1 (used on 2021-01-01 from 9am to 10am) and all other rooms (not used on 2021-01-01)
+-- Note: These tests focus on room 1, which is used from 9am-10am, 11am-12pm, 2pm-3pm
 
--- select find_rooms('2021-01-01', '2021-01-01 05:00:00', 4) -- room 1 + all other rooms are available
--- select find_rooms('2021-01-01', '2021-01-01 06:00:00', 4) -- all other rooms are available
--- select find_rooms('2021-01-01', '2021-01-01 09:00:00', 4) -- all other rooms are available
--- select find_rooms('2021-01-01', '2021-01-01 09:00:01', 4) -- all other rooms are available
--- select find_rooms('2021-01-01', '2021-01-01 09:59:59', 4) -- all other rooms are available
--- select find_rooms('2021-01-01', '2021-01-01 10:00:00', 4) -- room 1 + all other rooms are available
+-- select find_rooms('2021-01-01', '2021-01-01 09:59:59', 1) - no, room 1 isnt available
+-- select find_rooms('2021-01-01', '2021-01-01 10:00:00', 1) - yes, room 1 is available
+-- select find_rooms('2021-01-01', '2021-01-01 10:30:00', 1) - no
+-- select find_rooms('2021-01-01', '2021-01-01 11:00:00', 1) - no
+-- select find_rooms('2021-01-01', '2021-01-01 11:30:00', 1) - no
+-- select find_rooms('2021-01-01', '2021-01-01 12:00:00', 1) - yes
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- F9
 

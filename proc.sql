@@ -4,14 +4,14 @@
 -- Inputs: session date, session start hour, and session duration
 -- Returns: a table of room identifiers.
 
-CREATE OR REPLACE FUNCTION find_rooms (input_sess_date DATE, input_start_time TIMESTAMP, duration INT)
+CREATE OR REPLACE FUNCTION find_rooms (_sess_date DATE, _start_time TIMESTAMP, _duration INT)
 RETURNS TABLE(room_id INT) AS $$
     SELECT distinct room_id
     FROM Sessions
-    EXCEPT
+	EXCEPT
     SELECT distinct room_id
     FROM Sessions
-    WHERE (start_time, end_time) overlaps (input_start_time, input_start_time + interval '1h' * duration - interval '1 second')
+    WHERE (start_time, end_time) overlaps (_start_time, _start_time + interval '1h' * _duration)
 	ORDER BY room_id;
 $$ LANGUAGE SQL
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
