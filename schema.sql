@@ -26,6 +26,13 @@ create table FullTimeSalary(
 	primary key(payment_date, emp_id)
 );
 
+Create table PartTimeHoursWorked (
+	hours_worked integer DEFAULT 0,
+	month_year timestamp,
+	emp_id integer references PartTimeEmployees,
+	primary key (month_year, emp_id)
+);
+
 create table PartTimeSalary(
 	salary_amt numeric(10, 2) not null,
 	payment_date date,
@@ -200,3 +207,13 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- TRIGGER FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+DROP TRIGGER IF EXISTS update_part_time_hours ON Sessions; 
+CREATE TRIGGER update_part_time_hours
+AFTER UPDATE ON SESSIONS 
+FOR EACH ROW EXECUTE FUNCTION updateHoursWorked_partTimeInstructor();
+
+DROP TRIGGER IF EXISTS insert_part_time_hours ON SESSIONS;
+CREATE TRIGGER insert_part_time_hours
+AFTER INSERT ON SESSIONS 
+FOR EACH ROW EXECUTE FUNCTION insertHoursWorked_partTimeInstructor();
