@@ -151,8 +151,10 @@ $$ LANGUAGE SQL
 -- This routine is used to identify potential course offerings that could be of interest to inactive customers.
 -- A customer is classified as an active customer if the customer has registered for some course offering in the last six months (inclusive of the current month);
 -- otherwise, the customer is considered to be inactive customer.
+
 -- Course area A is of interest to a customer C if there is some course offering in area A among the three most recent course offerings registered by C.
 -- If a customer has not yet registered for any course offering, we assume that every course area is of interest to that customer.
+
 -- Returns: a table of records consisting of the following information for each inactive customer:
 -- customer identifier, customer name, course area A that is of interest to the customer, course identifier of a course C in area A, course title of C,
 -- launch date of course offering of course C that still accepts registrations, course offering’s registration deadline, and fees for the course offering.
@@ -163,17 +165,42 @@ RETURNS TABLE(_cust_id INT, _cust_name TEXT, _course_area TEXT, _course_id INT, 
     BEGIN
 		RETURN QUERY
         WITH ActiveCustomers AS (
-
-        ),
-        WITH InactiveCustomers AS (
+            SELECT distinct cust_id FROM Registers
+            WHERE register_date > CURRENT_DATE - interval '6 months'
+            OR (date_part('year', register_date) = date_part('year', CURRENT_DATE) AND date_part('month', register_date) = date_part('month', CURRENT_DATE))
+            UNION
+            SELECT distinct cust_id FROM Redeems
+            WHERE redeem_date > CURRENT_DATE - interval '6 months'
+            OR (date_part('year', redeem_date) = date_part('year', CURRENT_DATE) AND date_part('month', redeem_date) = date_part('month', CURRENT_DATE))
+        ), InactiveCustomers AS (
             SELECT cust_id
-            FROM customers
+            FROM Customers
             EXCEPT
             SELECT cust_id
             FROM ActiveCustomers
+        ), PastRegistrations AS (
+            SELECT cust_id, sess_id, register_date as registration_date
+            FROM Registers
+            UNION
+            SELECT cust_id, sess_id, redeem_date as registration_date
+            FROM Redeems
+            ORDER BY cust_id, sess_id
+        ), PastRegistrationsRanked AS (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY cust_id ORDER BY registration_date DESC) as rank
+            FROM PastRegistrations
+        ), MostRecentRegistrations AS (
+            SELECT *
+            FROM PastRegistrationsRanked
+            WHERE rank <= 3
         )
+
+        SELECT *
+        FROM MostRecentRegistrations
+
+        --
+
         SELECT cust_id, cust_name, course_area, course_id, title, launch_date, registration_deadline, fees
-        FROM InactiveCustomers
+        FROM InactiveCustomers natural join Customers
         ORDER BY cust_id, registration_deadline
     END;
 $$ LANGUAGE PLPGSQL
