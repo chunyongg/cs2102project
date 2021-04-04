@@ -84,13 +84,7 @@ INSTRUCTOR_ID integer, ROOM_ID integer) AS $$
 
 
 CREATE OR REPLACE VIEW INSTRUCTORSPECIALIZATIONS AS
-SELECT COURSE_AREA,
-	EMP_ID
-FROM PARTTIMEINSTRUCTORS
-UNION
-SELECT COURSE_AREA,
-	EMP_ID
-FROM FULLTIMEINSTRUCTORS;
+SELECT * FROM SPECIALIZATIONS;
 
 -- Fails if: Instructor does not specialize in area, is teaching consecutive sessions, (for part time) is teaching more than 30 hours,
  -- is teaching two sessions simultaneously, room is occupied
