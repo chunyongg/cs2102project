@@ -1,3 +1,8 @@
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- CHUN YONG'S FUNCTIONS
+
+-- F12
 DROP TYPE IF EXISTS emp_type cascade;
 
 DROP TYPE IF EXISTS emp_category cascade;
@@ -16,19 +21,6 @@ CREATE TYPE SessionInfo AS (
 
 
 -- Q1
-
-CREATE OR REPLACE FUNCTION check_is_not_admin_or_manager()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM Administrators WHERE emp_id = NEW.emp_id) OR EXISTS (SELECT 1 FROM Administrators WHERE emp_id = NEW.emp_id) THEN
-        RAISE EXCEPTION 'Part time employee must not be an administrator or manager';
-    END IF;
-END;
-$$ LANGUAGE PLPGSQL;
-DROP TRIGGER IF EXISTS check_part_time_employee ON PartTimeEmployees;
-CREATE TRIGGER check_part_time_employee
-BEFORE INSERT ON PartTimeEmployees
-FOR EACH ROW EXECUTE FUNCTION check_is_not_admin_or_manager();
 
 create or replace procedure add_employee(
     type emp_type,
@@ -111,58 +103,6 @@ $$ LANGUAGE plpgsql;
 
 
 -- Q2
-
-CREATE OR REPLACE FUNCTION check_removal_condition()
-RETURNS TRIGGER AS $$
-DECLARE 
-temp_date date;
-temp_date2 date;
-BEGIN 
-IF (OLD.depart_date IS NOT NULL AND NEW.depart_date <> OLD.depart_date) THEN
-    RAISE EXCEPTION 'Employee already removed';
-END IF;
-
-IF EXISTS (SELECT 1 FROM CourseAreas WHERE manager_id = OLD.emp_id) THEN 
-    RAISE EXCEPTION 'A manager managing course areas cannot be removed';
-END IF;
-
-SELECT
-    sess_date into temp_date
-from
-    Sessions
-where
-    instructor_id = OLD.emp_id
-ORDER BY
-    sess_date desc
-LIMIT 1;
-IF temp_date > NEW.depart_date THEN 
-    RAISE EXCEPTION 'Instructor is teaching a session that starts after the instructor depart date';
-END IF;
-SELECT
-    registration_deadline into temp_date2
-from
-    CourseOfferings
-where
-    admin_id = OLD.emp_id
-ORDER BY
-    registration_deadline desc
-LIMIT 1;
-
-IF temp_date2 > NEW.depart_date THEN 
-    RAISE EXCEPTION 'Instructor is teaching a session that starts after the instructor depart date';
-END IF;
-END;
-$$ LANGUAGE PLPGSQL;
-
-DROP TRIGGER IF EXISTS check_employee_removal ON EMPLOYEES;
-CREATE TRIGGER check_employee_removal
-BEFORE UPDATE ON Employees
-FOR EACH ROW
-WHEN 
-((NEW.depart_date IS NOT NULL and OLD.depart_date IS NULL)
-OR (OLD.depart_date IS NOT NULL AND NEW.depart_date <> OLD.depart_date)
-)
-EXECUTE FUNCTION check_removal_condition();
 
 CREATE OR REPLACE PROCEDURE remove_employee(
     eid integer,
@@ -403,3 +343,69 @@ COMMIT;
 END;
 
 $$ LANGUAGE plpgsql;
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- RUI EN's FUNCTIONS
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- XINYEE's FUNCTIONS
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- MICH's FUNCTIONS
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION check_is_not_admin_or_manager()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM Administrators WHERE emp_id = NEW.emp_id) OR EXISTS (SELECT 1 FROM Administrators WHERE emp_id = NEW.emp_id) THEN
+        RAISE EXCEPTION 'Part time employee must not be an administrator or manager';
+    END IF;
+END;
+$$ LANGUAGE PLPGSQL;
+
+CREATE OR REPLACE FUNCTION check_removal_condition()
+RETURNS TRIGGER AS $$
+DECLARE 
+temp_date date;
+temp_date2 date;
+BEGIN 
+IF (OLD.depart_date IS NOT NULL AND NEW.depart_date <> OLD.depart_date) THEN
+    RAISE EXCEPTION 'Employee already removed';
+END IF;
+
+IF EXISTS (SELECT 1 FROM CourseAreas WHERE manager_id = OLD.emp_id) THEN 
+    RAISE EXCEPTION 'A manager managing course areas cannot be removed';
+END IF;
+
+IF EXISTS (SELECT 1 FROM CourseOfferings WHERE admin_id = OLD.emp_id AND registration_deadline > NEW.depart_date) THEN 
+    RAISE EXCEPTION 'An administrator handling a course offering with registration deadline after depart date cannot be removed';
+END IF;
+
+SELECT
+    sess_date into temp_date
+from
+    Sessions
+where
+    instructor_id = OLD.emp_id
+ORDER BY
+    sess_date desc
+LIMIT 1;
+IF temp_date > NEW.depart_date THEN 
+    RAISE EXCEPTION 'Instructor is teaching a session that starts after the instructor depart date';
+END IF;
+SELECT
+    registration_deadline into temp_date2
+from
+    CourseOfferings
+where
+    admin_id = OLD.emp_id
+ORDER BY
+    registration_deadline desc
+LIMIT 1;
+
+IF temp_date2 > NEW.depart_date THEN 
+    RAISE EXCEPTION 'Instructor is teaching a session that starts after the instructor depart date';
+END IF;
+END;
+$$ LANGUAGE PLPGSQL;
+
+
