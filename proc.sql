@@ -44,7 +44,7 @@ RETURNS TABLE(_room_id INT, _room_capacity INT, _day DATE, _hours INT[]) AS $$
                             '1 hour'::interval) unavail_ref order by 1
                         )::int[];
                         
-                    avail_hours := array(select unnest(avail_hours) except select unnest(unavail_hours));
+                    avail_hours := array(select unnest(avail_hours) except select unnest(unavail_hours) order by 1);
                     
                 END LOOP;
 
