@@ -133,7 +133,8 @@ create table Customers (
   address text not null,
   phone integer not null,
   cust_name text not null,
-  email text not null
+  email text not null,
+  unique(cust_id, address, phone, cust_name, email)
 );
 
 create table CreditCards (
