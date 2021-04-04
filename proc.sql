@@ -11,15 +11,6 @@ RETURNS TABLE(room_id INT) AS $$
     WHERE NOT (start_time, end_time) overlaps (input_start_time, input_start_time + interval '1h' * duration)
 	ORDER BY room_id;
 $$ LANGUAGE SQL
-
--- testcases:
--- data includes room 1 (used on 2021-01-01 from 9am to 10am) and all other rooms (not used on 2021-01-01)
--- select find_rooms('2021-01-01', '2021-01-01 05:00:00', 4) -- room 1 + all other rooms are available
--- select find_rooms('2021-01-01', '2021-01-01 06:00:00', 4) -- all other rooms are available
--- select find_rooms('2021-01-01', '2021-01-01 09:00:00', 4) -- all other rooms are available
--- select find_rooms('2021-01-01', '2021-01-01 09:00:01', 4) -- all other rooms are available
--- select find_rooms('2021-01-01', '2021-01-01 09:59:59', 4) -- all other rooms are available
--- select find_rooms('2021-01-01', '2021-01-01 10:00:00', 4) -- room 1 + all other rooms are available
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 9. get_available_rooms: This routine is used to retrieve the availability information of rooms for a specific duration.
 -- Inputs: start date and end date
@@ -64,10 +55,6 @@ RETURNS TABLE(_room_id INT, _room_capacity INT, _day DATE, _hours INT[]) AS $$
         END LOOP;
     END;
 $$ LANGUAGE PLPGSQL
-
--- testcases
--- select get_available_rooms('2021-01-04', '2021-01-04')
--- select get_available_rooms('2021-01-08', '2021-01-08')
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 11. add_course_package: This routine is used to add a new course package for sale.
 -- Inputs: package name, number of free course sessions, start and end date indicating the duration that the promotional package is available for sale, and the price of the package.
@@ -78,14 +65,6 @@ AS $$
     INSERT INTO CoursePackages(package_name, num_free_registrations, sale_start_date, sale_end_date, price)
         VALUES (package_name, num_free_registrations, sale_start_date, sale_end_date, price);
 $$ LANGUAGE SQL
-
--- testcases:
--- call add_course_package ('Valentines Day Sale', 2, '2021-02-01', '2021-02-14', 2222)
-
--- undo addition:
--- 1. delete from CoursePackages where package_name='Valentines Day Sale'
--- 2. alter sequence CoursePackages_package_id_seq restart with 11
--- 3. select * from CoursePackages
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 12. get_available_course_packages: This routine is used to retrieve the course packages that are available for sale.
 -- Returns: a table of records with the following information for each available course package:
@@ -97,9 +76,6 @@ RETURNS TABLE(package_name TEXT, num_free_registrations INT, sale_end_date DATE,
     FROM CoursePackages
     WHERE CURRENT_DATE BETWEEN sale_start_date AND sale_end_date
 $$ LANGUAGE SQL
-
--- testcases
--- select get_available_course_packages() - returns 2021 Sale and April Flash Sale since we're querying in April 2021
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 17. register_session: This routine is used when a customer requests to register for a session in a course offering.
 -- Inputs: customer identifier, course offering identifier, session number, and payment method (credit card or redemption from active package).
@@ -160,16 +136,6 @@ AS $$
         END IF;
     END;
 $$ LANGUAGE PLPGSQL
-
--- testcases
--- call register_session(5, 4, 1, 'payment'::text) -- Error: The registration deadline has passed.
--- call register_session(2, 6, 1, 'lala'::text) -- Error: You may register for the session via payment or redemption only.
--- call register_session(9, 7, 1, 'redemption'::text) -- Error: You do not have a package to redeem sessions from.
-
--- call register_session(5, 5, 1, 'payment'::text) -- insert into registers
--- call register_session(6, 6, 1, 'redemption'::text) -- update buys, insert into redeems
--- call register_session(6, 6, 1, 'redemption'::text) -- Error: You have already registered for one of this courses sessions.
--- call register_session(2, 7, 1, 'redemption'::text) -- [trigger] there is no more redemptions left in the package, redemption of new session failed.
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 18. get_my_registrations: This routine is used when a customer requests to view his/her active course registrations
 -- (i.e, registrations for course sessions that have not ended).
@@ -185,9 +151,6 @@ RETURNS TABLE(title TEXT, fees INT, sess_date DATE, start_hour INT, duration INT
     WHERE sess_id in (SELECT R.sess_id FROM SessionParticipants R WHERE R.cust_id = input_cust_id)
     AND emp_id = instructor_id
 $$ LANGUAGE SQL
-
--- testcases
--- select get_my_registrations(1) - returns 2 records
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 27. top_packages: This routine is used to find the top N course packages in terms of the total number of packages sold for this year
 -- (i.e., the package’s start date is within this year)
@@ -200,11 +163,11 @@ $$ LANGUAGE SQL
 -- It is also possible for the output table to have fewer than N records if N is larger than the number of packages launched this year.
 
 CREATE OR REPLACE FUNCTION top_packages (n INT)
-RETURNS TABLE(_package_id INT, _num_free_registrations INT, _price NUMERIC(10,2), _sale_start_date DATE, _sale_end_date DATE, _num_sold INT) AS $$
+RETURNS TABLE(_package_id INT, _num_free_registrations INT, _price NUMERIC(10,2), _sale_start_date DATE, _sale_end_date DATE, _num_sold BIGINT) AS $$
     BEGIN
 		RETURN QUERY
         WITH Ranks AS (
-            SELECT B.package_id, count(B.package_id)::int as num_sold, RANK () OVER (ORDER BY count(B.package_id) DESC) num_rank
+            SELECT B.package_id, count(B.package_id) as num_sold, RANK () OVER (ORDER BY count(B.package_id) DESC) num_rank
             FROM Buys B
             GROUP BY B.package_id
         )
@@ -214,12 +177,6 @@ RETURNS TABLE(_package_id INT, _num_free_registrations INT, _price NUMERIC(10,2)
         ORDER BY num_sold desc, price desc;
     END;
 $$ LANGUAGE PLPGSQL
-
--- testcases
--- select top_packages(4) - returns packages 6,1,7,2
--- select top_packages(3) - returns packages 6,1,7,2
--- select top_packages(2) - returns packages 6,1
--- select top_packages(2) - returns packages 6
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 28. popular_courses: This routine is used to find the popular courses offered this year (i.e., start date is within this year).
 -- A course is popular if the course has at least two offerings this year, and for every pair of offerings of the course this year,
@@ -235,20 +192,21 @@ RETURNS TABLE(_course_id INT, _title TEXT, _course_area TEXT, _num_offerings INT
         WITH HighlyOfferedCourses AS ( -- courses with at least two offerings
             SELECT course_id, count(course_id) as num_offerings
             FROM CourseOfferings
+            WHERE date_part('year', start_date) = date_part('year', CURRENT_DATE)
             GROUP BY course_id
             HAVING count(course_id) >= 2
         ), RelevantOfferings AS ( -- offerings of HighlyOfferedCourses, along with their dates and num_registrations
             SELECT course_id, offering_id, start_date, get_num_registrations_of_offering(offering_id) as num_registrations
             FROM CourseOfferings
             WHERE course_id in (SELECT course_id FROM HighlyOfferedCourses)
-        ), ComparedOfferings AS (
+        ), ComparedOfferings AS ( -- earlier-later offerings placed side-by-side
             SELECT R.course_id as R_course_id, R.offering_id as R_offering_id, R.start_date as R_start_date, R.num_registrations as R_num_registrations,
             R2.course_id as R2_course_id, R2.offering_id as R2_offering_id, R2.start_date as R2_start_date, R2.num_registrations as R2_num_registrations
             FROM RelevantOfferings R, RelevantOfferings R2
             WHERE R.course_id = R2.course_id
             AND R.offering_id <> R2.offering_id
             AND R.start_date <= R2.start_date
-        ), PopularCourses AS (
+        ), PopularCourses AS ( -- popular courses
             SELECT r_course_id as course_id
             FROM ComparedOfferings
             EXCEPT
@@ -256,11 +214,11 @@ RETURNS TABLE(_course_id INT, _title TEXT, _course_area TEXT, _num_offerings INT
             FROM ComparedOfferings
             WHERE r_course_id = r2_course_id
             AND r_num_registrations > r2_num_registrations
-        ), LatestOfferings AS (
+        ), LatestOfferings AS ( -- the latest offering of a course
             SELECT course_id, max(start_date) as latest_date
             FROM CourseOfferings
             GROUP BY course_id
-        ), LatestRegistrations AS (
+        ), LatestRegistrations AS ( -- the number of registrations of the latest offering of a course
             SELECT C.course_id, get_num_registrations_of_offering(C.offering_id) as num_registrations
             FROM CourseOfferings C natural join LatestOfferings L
             WHERE C.start_date = L.latest_date
@@ -276,7 +234,4 @@ RETURNS INT AS $$
     SELECT count(*) FILTER (WHERE sess_id in (SELECT sess_id FROM Sessions WHERE offering_id = _offering_id))
     FROM SessionParticipants 
 $$ LANGUAGE SQL
-
--- testcases
--- select popular_courses
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
