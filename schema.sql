@@ -56,14 +56,16 @@ create table CourseAreas (
 );
 
 create table FullTimeInstructors(
-	id serial primary key,
-	course_area text not null references CourseAreas,
 	emp_id integer primary key references FullTimeEmployees references Instructors on delete cascade
 );
 
+create table Specializations(
+	emp_id integer references Instructors,
+	course_area integer references CourseAreas,
+	primary key (emp_id, course_area)
+)
+
 create table PartTimeInstructors(
-	id serial primary key,
-	course_area text not null references CourseAreas,
 	emp_id integer primary key references PartTimeEmployees references Instructors on delete cascade
 );
 
