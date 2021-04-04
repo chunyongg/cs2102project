@@ -1,104 +1,134 @@
---F3
-CREATE OR REPLACE PROCEDURE add_customer(IN cust_name text, IN address text,
-IN phone integer, IN email text,  IN cc_number integer, IN cvv integer, IN expiry_date date)
+
+--F3 DONE
+CREATE OR REPLACE PROCEDURE add_customer(IN c_name text, IN c_address text,
+IN c_phone integer, IN c_email text,  IN c_cc_number varchar(16),
+IN c_cc_cvv integer, IN c_cc_expiry_date date)
 AS $$
 declare
-    cust_id integer;
+    cid integer;
 begin
     INSERT INTO Customers
-    VALUES (default, address, phone, cust_name, email);
-
-    cust_id := (select cust_id from Customers order by cust_id limit 1);
+    VALUES (default, c_address, c_phone, c_name, c_email)
+    RETURNING cust_id into cid;
 
     INSERT INTO CreditCards
-    VALUES (cc_number, cvv, expiry_date, cust_id);
+    VALUES (c_cc_number, c_cc_cvv, c_cc_expiry_date, cid);
 end;
 $$ LANGUAGE plpgsql;
-
---F4
-CREATE OR REPLACE PROCEDURE update_credit_card(IN cust_id integer,
-IN cc_number integer, IN cvv integer, IN expiry_date date)
+--F4 DONE
+CREATE OR REPLACE PROCEDURE update_credit_card(IN c_cust_id integer,
+IN c_cc_number varchar(16), IN c_cc_cvv integer, IN c_cc_expiry_date date)
 AS $$
 Begin
-    UPDATE CreditCards CC
-    SET CC.cc_number = cc_number, CC.cvv = cvv, CC.expiry_date = expiry_date
-    WHERE CC.cust_id = cust_id;
-end;
-$$ LANGUAGE plpgsql;
-
---F13
-CREATE OR REPLACE PROCEDURE buy_course_package(IN cust_id integer, IN package_id integer)
-AS $$
-declare
-    buy_date date;
-    redemptions_left integer;
-    cc_number integer;
-begin
-    if ((select cust_id from Customers C where C.cust_id = cust_id) is not null) then
-        buy_date := (select now());
-        redemptions_left := (select num_free_registrations from CoursePackages CP where CP.package_id = package_id);
-        cc_number := (select cc_number from CreditCards CC where CC.cust_id = cust_id);
-        INSERT INTO Buys
-        VALUES (buy_date, redemptions_left, package_id, cust_id, cc_number);
+    if ((select cust_id from Customers C where C.cust_id = c_cust_id) is not null) then
+        UPDATE CreditCards
+        SET cust_id = c_cust_id, cvv = c_cc_cvv, expiry_date = c_cc_expiry_date
+        WHERE cc_number = c_cc_number;
     else
-        raise notice 'Customer details has not been added to system, purchase failed.';
+        raise notice 'Customer details has not been added to system, updating of Credit Card failed.';
     end if;
 end;
 $$ LANGUAGE plpgsql;
 
---F14
-CREATE VIEW SessionsInOrder as
+CREATE OR REPLACE FUNCTION update_cc() RETURNS TRIGGER AS $$
+BEGIN
+    if (New.expiry_date <= current_date) then
+        raise notice 'Credit Card has expired, please update with a valid card.';
+        return null;
+    else return New;
+    end if;
+end;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_cc_trigger
+BEFORE UPDATE ON CreditCards
+FOR EACH ROW EXECUTE FUNCTION update_cc();
+
+--F13 DONE
+CREATE OR REPLACE PROCEDURE buy_course_package(IN c_id integer, IN pkg_id integer)
+AS $$
+declare
+    buy_date date;
+    redemptions_left integer;
+    cc_number varchar(16);
+begin
+    if ((select cust_id from Customers C where C.cust_id = c_id) is null) then
+        raise notice 'Customer details has not been added to system, purchase failed.';
+    elsif ((select package_id from CoursePackages CP where CP.package_id = pkg_id) is null) then
+        raise notice 'Package does not exist in the system, purchase failed.';
+    else
+        buy_date := (select now());
+        redemptions_left := (select CP.num_free_registrations from CoursePackages CP where CP.package_id = pkg_id);
+        cc_number := (select CC.cc_number from CreditCards CC where CC.cust_id = c_id);
+        INSERT INTO Buys
+        VALUES (buy_date, redemptions_left, pkg_id, c_id, cc_number);
+    end if;
+end;
+$$ LANGUAGE plpgsql;
+
+--F14 NEED REFINEMENT
+CREATE OR REPLACE VIEW SessionsInOrder as
     select sess_id, sess_date, start_time
     from Sessions
     order by (sess_date, start_time) asc;
 
-CREATE OR REPLACE FUNCTION get_my_course_package(IN cust_id integer)
+CREATE OR REPLACE FUNCTION get_my_course_package_table(IN c_id integer)
 RETURNS TABLE (package_name text, price numeric, num_free_registrations integer,
 redemptions_left integer, buy_date date, title text,
 sess_date date, start_time timestamp)
 AS $$
 declare
-    package_id integer;
+    _package_id integer;
     p record;
     s record;
-    package_name text;
-    sess_id integer;
-    course_id integer;
-    price numeric;
+    _package_name text;
+    _sess_id integer;
+    _course_id integer;
+    _price numeric;
     num_free_reg integer;
-    redemptions_left integer;
-    buy_date date;
-    title text;
-    sess_date date;
-    start_time timestamp;
+    _redemptions_left integer;
+    _buy_date date;
+    _title text;
+    _sess_date date;
+    _start_time timestamp;
 begin
     for p in Select package_id
             from Buys B
-            where B.cust_id = cust_id
-            and B.redemptions_left <=1
+            where B.cust_id = c_id
+            and B.redemptions_left >= 1
     loop
-        package_id := p.package_id;
-        package_name := (select package_name from CoursePackages CP where CP.package_id = package_id);
-        price := (select price from CoursePackages CP where CP.package_id = package_id);
-        num_free_reg := (select num_free_registrations from CoursePackages CP where CP.package_id = package_id);
-        redemptions_left := (select redemptions_left from Buys B where B.package_id = package_id);
-        buy_date := (select buy_date from Buys B where B.package_id = package_id);
+        _package_id := p.package_id;
+        _package_name := (select CP.package_name from CoursePackages CP where CP.package_id = _package_id);
+        _price := (select CP.price from CoursePackages CP where CP.package_id = _package_id);
+        num_free_reg := (select CP.num_free_registrations from CoursePackages CP where CP.package_id = _package_id);
+        _redemptions_left := (select B.redemptions_left from Buys B
+            where B.package_id = _package_id and B.cust_id = c_id);
+        _buy_date := (select B.buy_date from Buys B
+            where B.package_id = _package_id and B.cust_id = c_id);
         for s in select sess_id
                 from Redeems R
-                where R.package_id = package_id
+                where R.package_id = _package_id
         loop
-            sess_id := s.sess_id;
-            course_id := (select course_id from Sessions S where S.sess_id = sess_id);
-            title := (select title from Courses C where C.title = title);
-            sess_date := (select sess_date from SessionsInOrder SIO where SIO.sess_id = sess_id);
-            start_time := (select start_time from SessionsInOrder SIO where SIO.start_time = start_time);
-            return row_to_json(row(package_name, price, num_free_reg,
-                    redemptions_left, buy_date, title,
-                    sess_date, start_time));
+            _sess_id := s.sess_id;
+            _course_id := (select S.course_id from Sessions S where S.sess_id = _sess_id);
+            _title := (select C.title from Courses C where C.title = title);
+            _sess_date := (select SIO.sess_date from SessionsInOrder SIO where SIO.sess_id = _sess_id);
+            _start_time := (select SIO.start_time from SessionsInOrder SIO where SIO.start_time = _start_time);
+            return next;
         end loop;
     end loop;
 end;
 $$ LANGUAGE plpgsql;
+
+create or replace function get_my_course_package(IN cust_id integer)
+returns json as $$
+declare
+    table_result json;
+begin
+    table_result := (select row_to_json(get_my_course_package_table(cust_id)) from get_my_course_package_table(cust_id));
+    return table_result;
+end;
+$$ language plpgsql;
 
 -- Self created function for F19 & F20
 -- check if registered for any session for that offering, return the session_id else null
@@ -118,7 +148,14 @@ returns integer as $$
     where SR.offering_id = offering_id;
 $$ language sql;
 
---F19
+CREATE OR REPLACE VIEW SessionParticipants AS
+    select cust_id, sess_id, null as package_id
+    from Registers
+    union
+    select cust_id, sess_id, package_id
+    from Redeems;
+
+--F19 NEED REFINEMENT
 CREATE OR REPLACE PROCEDURE update_course_session(IN cust_id integer, IN offering_id integer, IN sess_id integer)
 AS $$
 declare
@@ -145,7 +182,7 @@ begin
 end;
 $$ LANGUAGE plpgsql;
 
---F20
+--F20 NEED REFINEMENT
 CREATE OR REPLACE PROCEDURE cancel_registration(IN cust_id integer, IN offering_id integer)
 AS $$
 declare
@@ -185,7 +222,7 @@ begin
 end;
 $$ LANGUAGE plpgsql;
 
--- F30
+-- F30 NEED REFINEMENT
 -- View sales generated by each manager
 -- return table: manager name, manager total area count,
 -- manager total course offering that ended that year,
@@ -195,7 +232,7 @@ $$ LANGUAGE plpgsql;
 -- reg redemption fee = package fee/no. of sessions
 -- must be one output for each manager
 -- output sorted by asc order
-CREATE VIEW ManagerDetails as
+CREATE OR REPLACE VIEW ManagerDetails as
     select emp_id, emp_name
     from Managers natural left join Employees
     order by emp_name asc;
@@ -213,13 +250,13 @@ CREATE OR REPLACE FUNCTION get_total_course_offerings_of_area(IN course_area tex
 RETURNS TABLE(course_id integer, course_title text, offering_id integer)
 AS $$
 declare
-    curs cursor for (select course_id from Courses C where C.course_area = course_area);
+    area_curs cursor for (select course_id from Courses C where C.course_area = course_area);
     r record;
     o record;
 begin
-    open curs;
+    open area_curs;
     loop
-        fetch curs into r;
+        fetch area_curs into r;
         exit when not found;
         course_id := r.course_id;
         course_title := (select title from Courses C where C.course_id = course_id);
@@ -232,7 +269,7 @@ begin
             return next;
         end loop;
     end loop;
-    close curs;
+    close area_curs;
 end;
 $$ LANGUAGE plpgsql;
 
@@ -276,23 +313,23 @@ CREATE OR REPLACE FUNCTION get_all_areas_offerings_net_fee(IN emp_id integer)
 RETURNS TABLE(course_area text, course_title text, offering_id integer, total_net_reg_fee numeric)
 AS $$
 declare
-    curs cursor for (select course_title, offering_id from get_total_course_offerings_of_area(course_area));
+    r_curs cursor for (select course_title, offering_id from get_total_course_offerings_of_area(course_area));
     r record;
     a record;
 begin
     for a in (select * from get_manager_areas(emp_id))
     loop
         course_area := a.course_area;
-        open curs;
+        open r_curs;
         loop
-            fetch curs into r;
+            fetch r_curs into r;
             exit when not found;
             course_title := r.course_title;
             offering_id := r.offering_id;
             total_net_reg_fee := get_total_net_reg_fee_for_course_offering(offering_id);
             return next;
         end loop;
-        close curs;
+        close r_curs;
     end loop;
 end;
 $$ LANGUAGE plpgsql;
@@ -309,7 +346,6 @@ declare
     r record;
     a record;
     course_offering_count integer;
-    top_offerings setof record;
 begin
     open curs;
     loop
@@ -327,16 +363,15 @@ begin
         total_net_reg_fees := (select sum(total_net_reg_fee) from get_all_areas_offerings_net_fee(r.emp_id));
         With TopCourseOffering as (
             select *
-            from (get_all_areas_offerings_net_fee(r.emp_id)) T
+            from get_all_areas_offerings_net_fee(r.emp_id) as T
             order by T.total_net_reg_fee desc)
-        select TCO.course_name into top_offerings
-        from TopCourseOffering TCO
-        where TCO.total_net_reg_fee = (select max(total_net_reg_fee) from TopCourseOffering);
-        for names in top_offerings
-        loop
-            highest_net_reg_fee_course_offering := array_append(highest_net_reg_fee_course_offering, names);
-        end loop;
+        select array(
+            select TCO.course_name
+            from TopCourseOffering TCO
+            where TCO.total_net_reg_fee = (select max(total_net_reg_fee) from TopCourseOffering))
+        as highest_net_reg_fee_course_offering;
         return next;
     end loop;
+    close curs;
 end;
 $$ LANGUAGE plpgsql;
