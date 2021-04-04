@@ -216,7 +216,7 @@ returns integer as $$
     and SR.cust_id = cid;
 $$ language sql;
 
---F19 NEED REFINEMENT
+--F19 DONE
 CREATE OR REPLACE PROCEDURE update_course_session(IN cid integer, IN oid integer, IN sid integer)
 AS $$
 declare
@@ -224,6 +224,9 @@ declare
     seat_capacity integer;
     num_registered integer;
 begin
+    if (select SP.cust_id from SessionParticipants SP where SP.cust_id = cid) is null then
+        raise notice 'Customer did not register for any sessions, updating of session failed.';
+    end if;
     rid := (select S.room_id from Sessions S where S.sess_id = sid and S.offering_id = oid);
     seat_capacity := (select R.seating_capacity from Rooms R where R.room_id = rid);
     num_registered := (select count(*) from Registers R where R.sess_id = sid);
@@ -238,12 +241,12 @@ begin
             WHERE cust_id = cid;
         end if;
     else
-        raise notice 'Session is full, update of session failed, please try another one.';
+        raise notice 'Session is not available, please try another one.';
     end if;
 end;
 $$ LANGUAGE plpgsql;
 
---F20 NEED REFINEMENT
+--F20 DONE
 CREATE OR REPLACE PROCEDURE cancel_registration(IN cid integer, IN oid integer)
 AS $$
 declare
@@ -255,30 +258,38 @@ declare
     package_credit integer;
 begin
     cancel_date := current_date;
-    if (checkRegisterSession(cid, oid) is not null) then
+    if (select SP.cust_id from SessionParticipants SP where SP.cust_id = cid limit 1) is null then
+        raise notice 'Customer did not register for any sessions, cancellation process failed.';
+    elsif (select CO.offering_id from CourseOfferings CO where CO.offering_id = oid) is null then
+        raise notice 'Offering does not exist in the system, please check again.';
+    elsif (select SPS.cust_id
+        from (SessionParticipants natural join Sessions)SPS
+        where SPS.offering_id = oid
+        and SPS.cust_id = cid) is null then
+        raise notice 'Customer is not registered in Course Offering stated, please check again.';
+    elseif (checkRegisterSession(cid, oid) is not null) then
         _sess_id := checkRegisterSession(cid, oid);
         package_credit := 0;
         price := (select CO.fees from CourseOfferings CO where CO.offering_id = oid);
         _sess_date := (select S.sess_date from Sessions S where S.sess_id = _sess_id and S.offering_id = oid);
-        if ((select date_part('day',_sess_date-cancel_date)) >=7) then
+        if (select (_sess_date - cancel_date) >= 7) then
             refund_amt := price * 9/10;
         end if;
         DELETE from Registers
         WHERE cust_id = cid
         and sess_id = _sess_id;
-    end if;
-
-    if (checkRedeemSession(cid, oid) is not null) then
+        INSERT INTO Cancels
+        VALUES (cancel_date, refund_amt, package_credit, cid, _sess_id);
+    elsif (checkRedeemSession(cid, oid) is not null) then
         _sess_id := checkRedeemSession(cid, oid);
         refund_amt := 0;
         package_credit := 1;
         DELETE from Redeems
         WHERE cust_id = cid
         and sess_id = _sess_id;
+        INSERT INTO Cancels
+        VALUES (cancel_date, refund_amt, package_credit, cid, _sess_id);
     end if;
-
-    INSERT INTO Cancels
-        VALUES (cancel_date, refund_amt, package_credit, cid, sid);
 end;
 $$ LANGUAGE plpgsql;
 

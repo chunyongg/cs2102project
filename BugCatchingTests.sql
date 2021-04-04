@@ -45,25 +45,26 @@ select get_my_course_package(5);
 -- testcase -> not successful -> user no course_package
 select get_my_course_package(9);
 
---Q19 // need double check and change values
+--Q19 PASSED
 -- update_course_session(IN cust_id integer,
 -- IN offering_id integer, IN sess_id integer)
 -- testcase -> successful // PASSED
 call update_course_session(2, 8, 7);
--- testcase -> not successful -> customer already in session // PASSED
+-- testcase -> not successful -> customer already in session
 call update_course_session(1, 8, 6);
 -- testcase -> not successful -> user does not exist
-call update_course_session(50, 6, 2);
+call update_course_session(50, 2, 2);
 -- testcase -> not successful -> offering does not exist
-call update_course_session(3, 10, 2);
+call update_course_session(3, 11, 2);
 -- testcase -> not successful -> session does not exist
-call update_course_session(3, 6, 10);
+call update_course_session(3, 2, 10);
 
 
---Q20 // need double check and change values
+--Q20 PASSED
 -- cancel_registration(IN cust_id integer, IN offering_id integer)
 -- testcase -> successful
-call cancel_registration(2, 8);
+call cancel_registration(6, 8);
+call cancel_registration(6, 5);
 -- testcase -> not successful -> user does not exist
 call cancel_registration(50, 5);
 -- testcase -> not successful -> offering does not exist
