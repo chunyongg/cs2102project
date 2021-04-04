@@ -1,4 +1,8 @@
--- Q23: remove_session
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- CHUN YONG'S FUNCTIONS
+
+-- F23: remove_session
 
 CREATE OR REPLACE PROCEDURE REMOVE_SESSION(_OFFERING_ID integer, SESSION_NUMBER integer) AS $$
     BEGIN
@@ -8,11 +12,7 @@ CREATE OR REPLACE PROCEDURE REMOVE_SESSION(_OFFERING_ID integer, SESSION_NUMBER 
     END;
     $$ LANGUAGE PLPGSQL;
 
--- Removal fails if: Session has started or if there is at least one registration/redemption for the session
-
-
-
--- Q24: add_session
+-- F24: add_session
 
 CREATE OR REPLACE FUNCTION GETSESSIONEND(SESSION_START TIMESTAMP,
 
@@ -46,16 +46,6 @@ INSTRUCTOR_ID integer, ROOM_ID integer) AS $$
 CREATE OR REPLACE VIEW INSTRUCTORSPECIALIZATIONS AS
 SELECT * FROM SPECIALIZATIONS;
 
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- CHUN YONG'S FUNCTIONS
-
--- F12
-CREATE FUNCTION func_name (...)
-CREATE FUNCTION helper_function_1 (...)
-CREATE FUNCTION helper_function_2 (...)
-
--- F14
-CREATE FUNCTION func_name (...)
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- RUI EN's FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
