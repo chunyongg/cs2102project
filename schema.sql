@@ -1,7 +1,3 @@
-drop schema public2 cascade;
-
-create schema public2;
-
 create table Employees (
 	emp_id serial primary key,
 	emp_name text not null,
