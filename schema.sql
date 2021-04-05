@@ -188,8 +188,8 @@ DECLARE
     _end_time TIMESTAMP;
     _check_end_time TIMESTAMP;
 BEGIN
-    SELECT start_time INTO _start_time FROM Sessions WHERE offering_id = NEW.offering_id AND sess_num = NEW.sess_num;
-    SELECT end_time INTO _end_time FROM Sessions WHERE offering_id = NEW.offering_id AND sess_num = NEW.sess_num;
+    _start_time := NEW.start_time;
+	_end_time := NEW.end_time;
     SELECT course_id INTO _course_id FROM CourseOfferings WHERE offering_id = NEW.offering_id;
     SELECT duration INTO _duration FROM Courses WHERE course_id = _course_id;
     SELECT (_start_time + (_duration||' hours')::INTERVAL) INTO _check_end_time;
