@@ -14,12 +14,13 @@ begin
     VALUES (c_cc_number, c_cc_cvv, c_cc_expiry_date, cid);
 end;
 $$ LANGUAGE plpgsql;
+
 --F4 DONE
 CREATE OR REPLACE PROCEDURE update_credit_card(IN c_cust_id integer,
 IN c_cc_number varchar(16), IN c_cc_cvv integer, IN c_cc_expiry_date date)
 AS $$
 Begin
-    if ((select cust_id from Customers C where C.cust_id = c_cust_id) is not null) then
+    if (exists (select cust_id from Customers C where C.cust_id = c_cust_id)) then
         UPDATE CreditCards
         SET cust_id = c_cust_id, cvv = c_cc_cvv, expiry_date = c_cc_expiry_date
         WHERE cc_number = c_cc_number;
@@ -37,12 +38,12 @@ declare
     redemptions_left integer;
     cc_number varchar(16);
 begin
-    if ((select cust_id from Customers C where C.cust_id = c_id) is null) then
+    if (exists (select cust_id from Customers C where C.cust_id = c_id)) then
         raise exception 'Customer details has not been added to system, purchase failed.';
     elsif ((select package_id from CoursePackages CP where CP.package_id = pkg_id) is null) then
         raise exception 'Package does not exist in the system, purchase failed.';
     else
-        buy_date := (select now());
+        buy_date := (select CURRENT_DATE);
         redemptions_left := (select CP.num_free_registrations from CoursePackages CP where CP.package_id = pkg_id);
         cc_number := (select CC.cc_number from CreditCards CC where CC.cust_id = c_id);
         INSERT INTO Buys
@@ -92,7 +93,7 @@ end;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_my_course_package_table(IN c_id integer)
-RETURNS TABLE (package_name text, price numeric, num_free_registrations integer,
+RETURNS TABLE (package_name text, price numeric(10,2), num_free_registrations integer,
 redemptions_left integer, buy_date date, title text,
 sess_date date, start_time timestamp)
 AS $$
@@ -137,7 +138,7 @@ returns json as $$
 declare
     r record;
 begin
-    if ((select B.cust_id from Buys B where B.cust_id = c_id) is null) then
+    if (not exists (select B.cust_id from Buys B where B.cust_id = c_id)) then
         raise exception 'Customer details did not buy any Course Package, unable to retrieve Course Package.';
     else
         for r in (select * from get_my_course_package_table(c_id))
@@ -158,51 +159,56 @@ CREATE OR REPLACE VIEW SessionParticipants AS
     from Redeems;
 
 -- Self created function for F19 & F20
--- check if registered for any session for that offering, return the session_id else null
-create or replace function checkRegisterSession(IN cid integer, IN oid integer)
-returns integer as $$
-    select SR.sess_id
-    from (Sessions natural join Registers) SR -- by sess_id
-    where SR.offering_id = oid
-    and SR.cust_id = cid;
-$$ language sql;
+-- check if registered for any session for that offering, return boolean
+create or replace function checkRegisterSession(IN cid integer, IN sid integer)
+returns boolean as $$
+begin
+    return exists (select R.sess_id
+    from Registers R
+    where R.sess_id = sid
+    and R.cust_id = cid);
+end;
+$$ language plpgsql;
 
--- Self created function for F19 & F20 // NEED ADJUST
--- check if redeem any session for that offering, return the session_id else null
-create or replace function checkRedeemSession(IN cid integer, IN oid integer)
-returns integer as $$
-    select SR.sess_id
-    from (Sessions natural join Redeems) SR -- by sess_id
-    where SR.offering_id = oid
-    and SR.cust_id = cid;
-$$ language sql;
+-- Self created function for F19 & F20
+-- check if redeem any session for that offering, return boolean
+create or replace function checkRedeemSession(IN cid integer, IN sid integer)
+returns boolean as $$
+begin
+    return exists (select R.sess_id
+    from Redeems R
+    where R.sess_id = sid
+    and R.cust_id = cid);
+end;
+$$ language plpgsql;
 
 --F19 DONE
-CREATE OR REPLACE PROCEDURE update_course_session(IN cid integer, IN oid integer, IN sid integer)
+CREATE OR REPLACE PROCEDURE update_course_session(IN cid integer, IN oid integer, IN _sess_num integer)
 AS $$
 declare
     rid integer;
+    sid integer;
     seat_capacity integer;
     num_registered integer;
 begin
-    if (select SP.cust_id from SessionParticipants SP where SP.cust_id = cid) is null then
+    if (not exists(select SP.cust_id from SessionParticipants SP where SP.cust_id = cid)) then
         raise exception 'Customer did not register for any sessions, updating of session failed.';
-    end if;
-    rid := (select S.room_id from Sessions S where S.sess_id = sid and S.offering_id = oid);
-    seat_capacity := (select R.seating_capacity from Rooms R where R.room_id = rid);
-    num_registered := (select count(*) from Registers R where R.sess_id = sid);
-    if (num_registered < seat_capacity) then
-        if (checkRegisterSession(cid, oid) is not null) then
-            UPDATE Registers
-            SET sess_id = sid
-            WHERE cust_id = cid;
-        else
-            UPDATE Redeems
-            SET sess_id = sid
-            WHERE cust_id = cid;
-        end if;
     else
-        raise exception 'Session is not available, please try another one.';
+        sid := (select sess_id from Sessions S where S.offering_id = oid and S.sess_num = _sess_num);
+        if (sid is null) then
+            raise exception 'Session does not exist.';
+        else
+            rid := (select S.room_id from Sessions S where S.sess_id = sid);
+            if checkRegisterSession(cid, sid) then
+                UPDATE Registers
+                SET sess_id = sid
+                WHERE cust_id = cid;
+            else
+                UPDATE Redeems
+                SET sess_id = sid
+                WHERE cust_id = cid;
+            end if;
+        end if;
     end if;
 end;
 $$ LANGUAGE plpgsql;
@@ -214,8 +220,8 @@ declare
     _sess_id integer;
     cancel_date date;
     _sess_date date;
-    price numeric;
-    refund_amt numeric;
+    price numeric(10,2);
+    refund_amt numeric(10,2);
     package_credit integer;
 begin
     cancel_date := current_date;
@@ -308,17 +314,17 @@ end;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_total_net_reg_fee_for_course_offering(IN _offering_id integer)
-RETURNS numeric
+RETURNS numeric(10,2)
 AS $$
 declare
     register_fee integer;
     reg_count integer;
-    total_net_reg_fee numeric;
+    total_net_reg_fee numeric(10,2);
     cust_package integer;
     package_redemptions integer;
-    package_price numeric;
-    sess_price numeric;
-    acc_redeem_fee numeric;
+    package_price numeric(10,2);
+    sess_price numeric(10,2);
+    acc_redeem_fee numeric(10,2);
     s integer;
     c integer;
 begin
@@ -329,13 +335,14 @@ begin
     loop
         reg_count := (select count(*) from Registers R where R.sess_id = s);
         total_net_reg_fee := total_net_reg_fee + (register_fee * reg_count);
-        for c in (select R.cust_id from Redeems R where R.sess_id = s)
+        for c in (select R.cust_id, R.package_id from Redeems R where R.sess_id = s)
         loop
-            cust_package := (select B.package_id from Buys B where B.cust_id = c);
-            package_redemptions := (select CP.num_free_registrations
-            from CoursePackages CP where CP.package_id = cust_package);
-            package_price := (select price from CoursePackages CP where CP.package_id = cust_package);
-            sess_price := round(package_price/package_redemptions);
+            cust_package := c.package_id;
+            select CP.num_free_registrations, CP.price
+            into package_redemptions, package_price
+            from CoursePackages CP
+            where CP.package_id = cust_package;
+            sess_price := floor(package_price/package_redemptions);
             acc_redeem_fee := acc_redeem_fee + sess_price;
         end loop;
         total_net_reg_fee := total_net_reg_fee + acc_redeem_fee;
@@ -345,7 +352,7 @@ end;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_all_areas_offerings_net_fee(IN emp_id integer)
-RETURNS TABLE(course_area text, course_title text, offering_id integer, total_net_reg_fee numeric)
+RETURNS TABLE(course_area text, course_title text, offering_id integer, total_net_reg_fee numeric(10,2))
 AS $$
 declare
     _course_area text;
@@ -377,7 +384,7 @@ CREATE OR REPLACE FUNCTION view_manager_report()
 RETURNS TABLE(emp_name text,
 total_course_area integer,
 total_course_offering integer,
-total_net_reg_fees numeric,
+total_net_reg_fees numeric(10,2),
 highest_net_reg_fee_course_offering text[])
 AS $$
 declare
