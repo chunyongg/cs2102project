@@ -40,27 +40,29 @@ declare
     seats_taken integer;
     seat_limit integer;
 BEGIN
-    seat_limit := (select R.seating_capacity
-        from Sessions S, Rooms R
-        where S.sess_id = New.sess_id
-        and S.room_id = R.room_id);
-    seats_taken := (select count(*)
-        from (SessionParticipants natural join Sessions)SPS
-        where SPS.sess_id = New.sess_id);
-    if (seats_taken < seat_limit) then
-        return new;
-    else
-        raise exception 'This Session is full, please try another Session.';
+    if (TG_OP = 'INSERT' or (TG_OP = 'UPDATE' and old.sess_id <> new.sess_id)) then
+        seat_limit := (select R.seating_capacity
+            from Sessions S, Rooms R
+            where S.sess_id = New.sess_id
+            and S.room_id = R.room_id);
+        seats_taken := (select count(*)
+            from (SessionParticipants natural join Sessions)SPS
+            where SPS.sess_id = New.sess_id);
+        if (seats_taken < seat_limit) then
+            return new;
+        else
+            raise exception 'This Session is full, please try another Session.';
+        end if;
     end if;
 end;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER register_exceeded_session_trigger
-BEFORE INSERT ON Registers
+BEFORE INSERT OR UPDATE ON Registers
 FOR EACH ROW EXECUTE FUNCTION seating_capacity_limit();
 
 CREATE TRIGGER redeem_exceeded_session_trigger
-BEFORE INSERT ON Redeems
+BEFORE INSERT OR UPDATE ON Redeems
 FOR EACH ROW EXECUTE FUNCTION seating_capacity_limit();
 
 -- Enforce only 1 active/partially package per buyer TRIGGER
@@ -130,5 +132,5 @@ end;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER update_cc_trigger
-BEFORE UPDATE ON CreditCards
+BEFORE INSERT or UPDATE ON CreditCards
 FOR EACH ROW EXECUTE FUNCTION update_cc();
