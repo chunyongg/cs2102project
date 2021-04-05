@@ -23,7 +23,7 @@ temp_area text;
 
 BEGIN 
 
-IF (category = 'administrator' and array_length(areas, 1) <> 0) 
+IF (category = 'administrator' and array_length(areas, 1) IS NOT NULL) 
 THEN 
     RAISE EXCEPTION 'Administrator must have no course areas';
 ELSIF (array_length(areas, 1) IS NULL) THEN 
@@ -113,15 +113,9 @@ CREATE OR REPLACE PROCEDURE add_course(
     description text,
     area text,
     duration integer
-) AS $$ BEGIN
-INSERT INTO
-    Courses
-values
-(DEFAULT, duration, title, description, area);
-
-END;
-
-$$ LANGUAGE PLPGSQL;
+) AS $$ 
+INSERT INTO Courses values (DEFAULT, duration, title, description, area);
+$$ LANGUAGE SQL;
 
 CREATE
 OR REPLACE FUNCTION getSeatingCapacity(session_items SessionInfo []) RETURNS INTEGER AS $$ DECLARE item SessionInfo;
@@ -277,11 +271,8 @@ CREATE OR REPLACE PROCEDURE add_course_offering(
     admin_id integer,
     session_items SessionInfo []
 ) AS $$ 
-DECLARE 
 
-IF (array_length(session_items, 1) is NULL) THEN 
-    RAISE EXCEPTION 'There must be at least one session';
-END IF;
+DECLARE 
 
 seating_capacity integer;
 
@@ -293,11 +284,11 @@ duration integer;
 
 BEGIN 
 
-
+IF (array_length(session_items, 1) is NULL) THEN 
+    RAISE EXCEPTION 'There must be at least one session';
+END IF;
 
 seating_capacity := getSeatingCapacity(session_items);
-
-
 
 SELECT getStartDate(session_items) into start_date;
 
@@ -364,7 +355,6 @@ CREATE OR REPLACE FUNCTION check_removal_condition()
 RETURNS TRIGGER AS $$
 DECLARE 
 temp_date date;
-temp_date2 date;
 BEGIN 
 IF (OLD.depart_date IS NOT NULL AND NEW.depart_date <> OLD.depart_date) THEN
     RAISE EXCEPTION 'Employee already removed';
@@ -390,23 +380,11 @@ LIMIT 1;
 IF temp_date > NEW.depart_date THEN 
     RAISE EXCEPTION 'Instructor is teaching a session that starts after the instructor depart date';
 END IF;
-SELECT
-    registration_deadline into temp_date2
-from
-    CourseOfferings
-where
-    admin_id = OLD.emp_id
-ORDER BY
-    registration_deadline desc
-LIMIT 1;
 
-IF temp_date2 > NEW.depart_date THEN 
-    RAISE EXCEPTION 'Instructor is teaching a session that starts after the instructor depart date';
-END IF;
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION check_courseofferings_seating_capacity
+CREATE OR REPLACE FUNCTION check_courseofferings_seating_capacity()
 RETURNS TRIGGER AS $$
 BEGIN 
 IF (NEW.seating_capacity < NEW.target_number_registrations) THEN

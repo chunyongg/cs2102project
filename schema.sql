@@ -67,7 +67,7 @@ create table PartTimeInstructors(
 
 create table Courses (
 	course_id serial unique,
-	duration integer not null,
+	duration integer not null check (duration > 0),
 	title text unique not null,
 	description text,
 	course_area text references CourseAreas on delete cascade,
