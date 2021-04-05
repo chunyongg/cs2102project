@@ -11,11 +11,10 @@ declare
     oid integer;
 BEGIN
     oid := (select S.offering_id from Sessions S where S.sess_id = New.sess_id);
-    if ((select SPS.sess_id
+    if (exists (select SPS.sess_id
         from (SessionParticipants natural join Sessions) SPS
         where SPS.cust_id = New.cust_id
-        and SPS.offering_id = oid
-        limit 1) is not null) then
+        and SPS.offering_id = oid)) then
         raise exception 'Customer has already registered for one of the sessions in the course.';
     else
         return new;
@@ -71,39 +70,17 @@ CREATE OR REPLACE FUNCTION active_package_limit() RETURNS TRIGGER AS $$
 declare
 BEGIN
     if (TG_OP = 'INSERT') then
-        if ((select B.package_id
+        if (exists (select B.package_id
             from Buys B
             where B.cust_id = New.cust_id
-            and B.redemptions_left > 0
-            limit 1) is not null) then -- active
+            and B.redemptions_left > 0)) then -- active
             return exception 'Customer can only have one active package.';
-        elsif ((select B.package_id
+        elsif (exists (select B.package_id
                   from Buys B, Redeems R, Sessions S
                   where B.cust_id = New.cust_id
                     and B.package_id = R.package_id
                     and R.sess_id = S.sess_id
-                    and S.latest_cancel_date >= CURRENT_DATE
-                    limit 1) is not null) then -- partially active
-            return exception 'Customer can only have one partially active package.';
-        else
-            return new;
-        end if;
-    elsif (TG_OP = 'UPDATE' and NEW.package_id <> OLD.package_id) then
-        if ((select B.package_id
-            from Buys B
-            where B.cust_id = New.cust_id
-            and B.package_id <> New.package_id
-            and B.redemptions_left > 0
-            limit 1) is not null) then -- another existing active
-            return exception 'Customer can only have one active package.';
-        elsif ((select B.package_id
-                  from Buys B, Redeems R, Sessions S
-                  where B.cust_id = New.cust_id
-                    and B.package_id = R.package_id
-                    and R.package_id <> New.package_id
-                    and R.sess_id = S.sess_id
-                    and S.latest_cancel_date >= CURRENT_DATE
-                    limit 1) is not null) then -- another partially active
+                    and S.latest_cancel_date >= CURRENT_DATE)) then -- partially active
             return exception 'Customer can only have one partially active package.';
         else
             return new;
@@ -113,7 +90,7 @@ end;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER buy_excessive_active_package_trigger
-BEFORE INSERT OR UPDATE ON Buys
+BEFORE INSERT ON Buys
 FOR EACH ROW EXECUTE FUNCTION active_package_limit();
 
 -- Trigger for when inserting Redemptions into Redeems -> need ensure it corr to redemptions left in Buys
