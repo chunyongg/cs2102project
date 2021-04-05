@@ -117,8 +117,6 @@ AS $$
 			
         IF CURRENT_DATE > target_registration_deadline THEN
             raise exception 'Error: The registration deadline has passed.';
-        ELSIF target_num_sess_registered > 0 THEN -- trigger!
-            raise exception 'Error: You have already registered for one of this courses sessions.';
         ELSIF _payment_method = 'payment' THEN
             SELECT cc_number INTO target_cc_number FROM CreditCards WHERE CreditCards.cust_id = _cust_id;
             INSERT INTO Registers VALUES (CURRENT_DATE, _cust_id, target_sess_id, target_cc_number);
@@ -126,8 +124,6 @@ AS $$
             SELECT redemptions_left, package_id INTO target_redemptions_left, target_package_id FROM Buys WHERE cust_id = _cust_id ORDER BY redemptions_left desc LIMIT 1;
 			IF target_package_id is null THEN
 				raise exception 'Error: You do not have a package to redeem sessions from.';
-            ELSIF target_redemptions_left = 0 THEN -- trigger!
-                raise exception 'Error: You have already fully redeemed sessions from the package.';
             END IF;
             UPDATE Buys SET redemptions_left = redemptions_left - 1 WHERE cust_id = _cust_id;
             INSERT INTO Redeems VALUES (CURRENT_DATE, target_sess_id, target_package_id, _cust_id);
