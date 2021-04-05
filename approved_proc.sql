@@ -1,24 +1,9 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- CHUN YONG'S FUNCTIONS
-
--- F12
-CREATE FUNCTION func_name (...)
-CREATE FUNCTION helper_function_1 (...)
-CREATE FUNCTION helper_function_2 (...)
-
--- F14
-CREATE FUNCTION func_name (...)
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- RUI EN's FUNCTIONS
 
 -- F9
-CREATE OR REPLACE FUNCTION get_available_rooms (_start_date DATE, _end_date DATE)
-RETURNS TABLE(_room_id INT, _room_capacity INT, _day DATE, _hours INT[]) AS $$
-    SELECT *
-    FROM get_available_rooms_helper(_start_date, _end_date) A
-    ORDER BY A._room_id, A._day
-$$ LANGUAGE SQL
-
 CREATE OR REPLACE FUNCTION get_available_rooms_helper (_start_date DATE, _end_date DATE)
 RETURNS TABLE(_room_id INT, _room_capacity INT, _day DATE, _hours INT[]) AS $$
     DECLARE
@@ -61,13 +46,20 @@ RETURNS TABLE(_room_id INT, _room_capacity INT, _day DATE, _hours INT[]) AS $$
 			current_day := _start_date;
         END LOOP;
     END;
-$$ LANGUAGE PLPGSQL
+$$ LANGUAGE PLPGSQL;
+
+CREATE OR REPLACE FUNCTION get_available_rooms (_start_date DATE, _end_date DATE)
+RETURNS TABLE(_room_id INT, _room_capacity INT, _day DATE, _hours INT[]) AS $$
+    SELECT *
+    FROM get_available_rooms_helper(_start_date, _end_date) A
+    ORDER BY A._room_id, A._day
+$$ LANGUAGE SQL;
 
 -- F11
 CREATE OR REPLACE PROCEDURE add_course_package (package_name TEXT, num_free_registrations INT, sale_start_date DATE, sale_end_date DATE, price NUMERIC(10, 2))
 AS $$
     INSERT INTO CoursePackages VALUES (default, sale_start_date, sale_end_date, num_free_registrations, package_name, price);
-$$ LANGUAGE SQL
+$$ LANGUAGE SQL;
 
 -- F12
 CREATE OR REPLACE FUNCTION get_available_course_packages ()
@@ -75,7 +67,7 @@ RETURNS TABLE(package_name TEXT, num_free_registrations INT, sale_end_date DATE,
     SELECT package_name, num_free_registrations, sale_end_date, price
     FROM CoursePackages
     WHERE CURRENT_DATE BETWEEN sale_start_date AND sale_end_date
-$$ LANGUAGE SQL
+$$ LANGUAGE SQL;
 
 -- F17
 CREATE OR REPLACE PROCEDURE register_session (_cust_id INT, _offering_id INT, _sess_num INT, _payment_method TEXT)
@@ -126,7 +118,7 @@ AS $$
             raise exception 'You may register for the session via payment or redemption only.';
         END IF;
     END;
-$$ LANGUAGE PLPGSQL
+$$ LANGUAGE PLPGSQL;
 
 -- F18
 CREATE OR REPLACE FUNCTION get_my_registrations (input_cust_id INT)
@@ -136,7 +128,7 @@ RETURNS TABLE(title TEXT, fees INT, sess_date DATE, start_hour INT, duration INT
     WHERE sess_id in (SELECT R.sess_id FROM SessionParticipants R WHERE R.cust_id = input_cust_id)
     AND emp_id = instructor_id
     AND CURRENT_DATE <= sess_date
-$$ LANGUAGE SQL
+$$ LANGUAGE SQL;
 
 -- F26
 CREATE OR REPLACE FUNCTION promote_courses ()
@@ -187,7 +179,7 @@ RETURNS TABLE(_cust_id INT, _cust_name TEXT, _course_area TEXT, _course_id INT, 
         WHERE CURRENT_DATE <= registration_deadline
         ORDER BY cust_id, registration_deadline;
     END;
-$$ LANGUAGE PLPGSQL
+$$ LANGUAGE PLPGSQL;
 
 -- F27
 CREATE OR REPLACE FUNCTION top_packages (n INT)
@@ -208,7 +200,7 @@ RETURNS TABLE(_package_id INT, _num_free_registrations INT, _price NUMERIC(10,2)
         AND date_part('year', sale_start_date) = date_part('year', CURRENT_DATE)
         ORDER BY num_sold desc, price desc;
     END;
-$$ LANGUAGE PLPGSQL
+$$ LANGUAGE PLPGSQL;
 
 -- F28
 CREATE OR REPLACE FUNCTION popular_courses ()
@@ -253,14 +245,13 @@ RETURNS TABLE(_course_id INT, _title TEXT, _course_area TEXT, _num_offerings BIG
         FROM PopularCourses natural join Courses natural join HighlyOfferedCourses natural join LatestRegistrations
         ORDER BY num_registrations desc, course_id;
     END;
-$$ LANGUAGE PLPGSQL
+$$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION get_num_registrations_of_offering (_offering_id INT)
 RETURNS BIGINT AS $$
     SELECT count(*) FILTER (WHERE sess_id in (SELECT sess_id FROM Sessions WHERE offering_id = _offering_id))
     FROM SessionParticipants 
-$$ LANGUAGE SQL
-
+$$ LANGUAGE SQL;
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- XINYEE's FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
