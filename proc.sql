@@ -119,19 +119,19 @@ AS $$
 		AND cust_id = _cust_id;
 			
         IF CURRENT_DATE > target_registration_deadline THEN
-            raise exception 'Error: The registration deadline has passed.';
+            raise exception 'The registration deadline has passed.';
         ELSIF _payment_method = 'payment' THEN
             SELECT cc_number INTO target_cc_number FROM CreditCards WHERE CreditCards.cust_id = _cust_id;
             INSERT INTO Registers VALUES (CURRENT_DATE, _cust_id, target_sess_id, target_cc_number);
         ELSIF _payment_method = 'redemption' THEN
             SELECT redemptions_left, package_id INTO target_redemptions_left, target_package_id FROM Buys WHERE cust_id = _cust_id ORDER BY redemptions_left desc LIMIT 1;
 			IF target_package_id is null THEN
-				raise exception 'Error: You do not have a package to redeem sessions from.';
+				raise exception 'You do not have a package to redeem sessions from.';
             END IF;
             UPDATE Buys SET redemptions_left = redemptions_left - 1 WHERE cust_id = _cust_id;
             INSERT INTO Redeems VALUES (CURRENT_DATE, target_sess_id, target_package_id, _cust_id);
         ELSE
-            raise exception 'Error: You may register for the session via payment or redemption only.';
+            raise exception 'You may register for the session via payment or redemption only.';
         END IF;
     END;
 $$ LANGUAGE PLPGSQL
