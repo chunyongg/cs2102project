@@ -151,20 +151,22 @@ create table CoursePackages (
 );
 
 create table Buys (
-	buy_date date not null,
-	redemptions_left integer not null,
-	package_id integer references CoursePackages,
-	cust_id integer references Customers on delete cascade,
-	cc_number varchar(16) not null references CreditCards,
-	primary key(cust_id, package_id)
+  buy_date date not null,
+  redemptions_left integer not null,
+  package_id integer references CoursePackages,
+  cust_id integer,
+  cc_number varchar(16) not null,
+  foreign key (cust_id, cc_number) references CreditCards(cust_id, cc_number) on delete cascade,
+  primary key(cust_id, package_id)
 );
 
 create table Registers (
-	register_date date not null,
-	cust_id integer references Customers on delete cascade,
-	sess_id integer references Sessions(sess_id),
-	cc_number varchar(16) not null references CreditCards,
-	primary key(cust_id, sess_id)
+  register_date date not null,
+  cust_id integer,
+  sess_id integer references Sessions(sess_id),
+  cc_number varchar(16) not null,
+  foreign key (cust_id, cc_number) references CreditCards(cust_id, cc_number) on delete cascade,
+  primary key(cust_id, sess_id)
 );
 
 create table Cancels (
@@ -221,6 +223,7 @@ EXECUTE FUNCTION check_removal_condition();
 
 -- Ensure CourseOffering seating capacity is valid
 -- Update is omitted from this trigger since removal of session can be permitted even if seating capacity drops below target number (F23 remove_session)
-DROP TRIGGER IF EXISTS before_offering_insert_or_update
-BEFORE INSERT ON CourseOfferings 
-FOR EACH ROW EXECUTE check_courseofferings_seating_capacity();
+DROP TRIGGER IF EXISTS before_offering_insert_or_update ON CourseOfferings;
+CREATE TRIGGER check_seating_capacity
+BEFORE INSERT ON CourseOfferings
+FOR EACH ROW EXECUTE FUNCTION check_courseofferings_seating_capacity();

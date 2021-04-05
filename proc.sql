@@ -4,6 +4,23 @@
 
 -- F1
 
+DROP TYPE IF EXISTS emp_type cascade;
+
+DROP TYPE IF EXISTS emp_category cascade;
+
+DROP TYPE IF EXISTS SessionInfo cascade;
+
+CREATE TYPE emp_type AS ENUM ('full_time', 'part_time');
+
+CREATE TYPE emp_category AS ENUM ('administrator', 'manager', 'instructor');
+
+CREATE TYPE SessionInfo AS (
+    session_date date,
+    session_start timestamp,
+    room_id integer
+);
+
+
 create or replace procedure add_employee(
     type emp_type,
     name TEXT,
@@ -23,10 +40,18 @@ temp_area text;
 
 BEGIN 
 
-IF (category = 'administrator' and array_length(areas, 1) IS NOT NULL) 
+IF (category = 'administrator' AND type = 'part_time') THEN 
+    RAISE EXCEPTION  'Administrator must be full time';
+END IF;
+
+IF (category = 'manager' AND type = 'part_time') THEN 
+    RAISE EXCEPTION 'Manager must be full time';
+END IF;
+
+IF (category = 'administrator' and array_length(areas, 1) <> 0) 
 THEN 
     RAISE EXCEPTION 'Administrator must have no course areas';
-ELSIF (array_length(areas, 1) IS NULL) THEN 
+ELSIF (category <> 'administrator' and array_length(areas, 1) IS NULL) THEN 
     RAISE EXCEPTION 'Course area must be specified';
 END IF;
 
@@ -49,12 +74,17 @@ ELSE
     INSERT INTO PartTimeEmployees values(salary, eid);
 END IF;
 
+IF (category = 'instructor') THEN 
+    INSERT INTO Instructors values(eid);
+END IF;
+
 IF (type = 'full_time' AND category ='instructor') THEN 
-    INSERT INTO FullTimeInstructors(eid)
+
+    INSERT INTO FullTimeInstructors values(eid);
 END IF;
 
 IF (type = 'part_time' AND category ='instructor') THEN 
-    INSERT INTO PartTimeInstructors(eid)
+    INSERT INTO PartTimeInstructors values(eid);
 END IF;
 
 IF (category = 'administrator') THEN
@@ -72,9 +102,8 @@ ELSIF (category = 'manager') THEN
 
 ELSE
         FOREACH temp_area IN ARRAY areas LOOP
-            INSERT INTO SPECIALIZATIONS(eid, temp_area)
+            INSERT INTO SPECIALIZATIONS VALUES(eid, temp_area);
         END LOOP;
-    INSERT INTO Instructors values(eid);
 END IF;
 
 COMMIT;
@@ -325,29 +354,13 @@ $$ LANGUAGE plpgsql;
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-DROP TYPE IF EXISTS emp_type cascade;
-
-DROP TYPE IF EXISTS emp_category cascade;
-
-DROP TYPE IF EXISTS SessionInfo cascade;
-
-CREATE TYPE emp_type AS ENUM ('full_time', 'part_time');
-
-CREATE TYPE emp_category AS ENUM ('administrator', 'manager', 'instructor');
-
-CREATE TYPE SessionInfo AS (
-    session_date date,
-    session_start timestamp,
-    room_id integer
-);
-
-
 CREATE OR REPLACE FUNCTION check_is_not_admin_or_manager()
 RETURNS TRIGGER AS $$
 BEGIN
     IF EXISTS (SELECT 1 FROM Administrators WHERE emp_id = NEW.emp_id) OR EXISTS (SELECT 1 FROM Administrators WHERE emp_id = NEW.emp_id) THEN
         RAISE EXCEPTION 'Part time employee must not be an administrator or manager';
     END IF;
+    RETURN NEW;
 END;
 $$ LANGUAGE PLPGSQL;
 
@@ -380,6 +393,8 @@ LIMIT 1;
 IF temp_date > NEW.depart_date THEN 
     RAISE EXCEPTION 'Instructor is teaching a session that starts after the instructor depart date';
 END IF;
+
+RETURN OLD;
 
 END;
 $$ LANGUAGE PLPGSQL;
