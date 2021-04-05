@@ -136,20 +136,6 @@ insert into Instructors values
 (29),
 (30);
 
-insert into FullTimeInstructors values
-('Algorithms and Theory', 21),
-('Artificial Intelligence', 22),
-('Game Design', 23),
-('Computer Security', 24),
-('Database Systems', 25);
-
-insert into PartTimeInstructors values
-('Computer Networking', 26),
-('Parallel Computing', 27),
-('Software Engineering', 28),
-('Data Analytics', 29),
-('Programming Languages', 30);
-
 insert into CourseAreas values
 ('Algorithms and Theory', 11),
 ('Artificial Intelligence', 12),
@@ -161,6 +147,32 @@ insert into CourseAreas values
 ('Software Engineering', 18),
 ('Data Analytics', 19),
 ('Programming Languages', 20);
+
+insert into FullTimeInstructors values
+(21),
+(22),
+(23),
+(24),
+(25);
+
+insert into PartTimeInstructors values
+(26),
+(27),
+(28),
+(29),
+(30);
+
+insert into Specializations values
+(21, 'Algorithms and Theory'),
+(22, 'Artificial Intelligence'),
+(23, 'Game Design'),
+(24, 'Computer Security'),
+(25, 'Database Systems'),
+(26, 'Computer Networking'),
+(27, 'Parallel Computing'),
+(28, 'Software Engineering'),
+(29, 'Data Analytics'),
+(30, 'Programming Languages');
 
 -- The earliest session can start at 9am and the latest session (for each day) must end by 6pm, and no sessions are conducted between 12pm to 2pm
 -- So the maximum duration should be 7 hours
@@ -226,4 +238,3 @@ insert into Buys values
 
 ('2021-04-01', 1, 7, 7, '3710753283744374'),
 ('2021-04-02', 1, 7, 21, '4402703555407878');
-
