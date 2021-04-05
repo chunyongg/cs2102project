@@ -148,18 +148,6 @@ RETURNS TABLE(title TEXT, fees INT, sess_date DATE, start_hour INT, duration INT
 $$ LANGUAGE SQL
 
 -- F26
--- This routine is used to identify potential course offerings that could be of interest to inactive customers.
--- A customer is classified as an active customer if the customer has registered for some course offering in the last six months (inclusive of the current month);
--- otherwise, the customer is considered to be inactive customer.
-
--- Course area A is of interest to a customer C if there is some course offering in area A among the three most recent course offerings registered by C.
--- If a customer has not yet registered for any course offering, we assume that every course area is of interest to that customer.
-
--- Returns: a table of records consisting of the following information for each inactive customer:
--- customer identifier, customer name, course area A that is of interest to the customer, course identifier of a course C in area A, course title of C,
--- launch date of course offering of course C that still accepts registrations, course offering’s registration deadline, and fees for the course offering.
--- The output is sorted in ascending order of customer identifier and course offering’s registration deadline.
-
 CREATE OR REPLACE FUNCTION promote_courses ()
 RETURNS TABLE(_cust_id INT, _cust_name TEXT, _course_area TEXT, _course_id INT, _title TEXT, _launch_date DATE, _registration_deadline DATE, _fees NUMERIC(10, 2)) AS $$
     BEGIN
@@ -167,11 +155,9 @@ RETURNS TABLE(_cust_id INT, _cust_name TEXT, _course_area TEXT, _course_id INT, 
         WITH ActiveCustomers AS (
             SELECT distinct cust_id FROM Registers
             WHERE register_date > CURRENT_DATE - interval '6 months'
-            OR (date_part('year', register_date) = date_part('year', CURRENT_DATE) AND date_part('month', register_date) = date_part('month', CURRENT_DATE))
             UNION
             SELECT distinct cust_id FROM Redeems
             WHERE redeem_date > CURRENT_DATE - interval '6 months'
-            OR (date_part('year', redeem_date) = date_part('year', CURRENT_DATE) AND date_part('month', redeem_date) = date_part('month', CURRENT_DATE))
         ), InactiveCustomers AS (
             SELECT cust_id
             FROM Customers
@@ -188,20 +174,27 @@ RETURNS TABLE(_cust_id INT, _cust_name TEXT, _course_area TEXT, _course_id INT, 
         ), PastRegistrationsRanked AS (
             SELECT *, ROW_NUMBER() OVER (PARTITION BY cust_id ORDER BY registration_date DESC) as rank
             FROM PastRegistrations
-        ), MostRecentRegistrations AS (
+        ), InactiveCustomersRegistrations AS ( -- top 3 most recent registrations of inactive customers who registered
             SELECT *
-            FROM PastRegistrationsRanked
+            FROM PastRegistrationsRanked natural join InactiveCustomers
             WHERE rank <= 3
+        ), InactiveCustomersNotRegistered AS ( -- inactive customers who have not registered before
+            SELECT cust_id
+            FROM InactiveCustomers
+            EXCEPT
+            SELECT cust_id
+            FROM PastRegistrations
+        ), InactiveCustomersCourses AS ( -- course areas that are of interest to each inactive customer
+            SELECT cust_id, course_area, course_id, title
+            FROM InactiveCustomersRegistrations natural join Sessions natural join CourseOfferings natural join Courses
+            UNION
+            SELECT cust_id, course_area, course_id, title
+            FROM InactiveCustomersNotRegistered, Courses
         )
-
-        SELECT *
-        FROM MostRecentRegistrations
-
-        --
-
         SELECT cust_id, cust_name, course_area, course_id, title, launch_date, registration_deadline, fees
-        FROM InactiveCustomers natural join Customers
-        ORDER BY cust_id, registration_deadline
+        FROM CourseOfferings natural join InactiveCustomersCourses natural join Customers
+        WHERE CURRENT_DATE <= registration_deadline
+        ORDER BY cust_id, registration_deadline;
     END;
 $$ LANGUAGE PLPGSQL
 

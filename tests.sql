@@ -44,6 +44,9 @@
 -- F18
 -- select get_my_registrations(1) - returns 2 records
 
+-- F26
+-- select promote_courses() - returns all course offerings that haven't ended registration, for all courses that each inactive customer is interested in
+
 -- F27
 -- select top_packages(4) - returns packages 6,1,7,2
 -- select top_packages(3) - returns packages 6,1,7,2
