@@ -12,7 +12,7 @@ CREATE FUNCTION func_name (...)
 -- RUI EN's FUNCTIONS
 
 -- F8
-CREATE OR REPLACE FUNCTION find_rooms (_sess_date DATE, _start_time TIMESTAMP, _duration INT)
+CREATE OR REPLACE FUNCTION find_rooms (_start_time TIMESTAMP, _duration INT)
 RETURNS TABLE(room_id INT) AS $$
     SELECT distinct room_id
     FROM Rooms
@@ -72,8 +72,7 @@ $$ LANGUAGE PLPGSQL
 -- F11
 CREATE OR REPLACE PROCEDURE add_course_package (package_name TEXT, num_free_registrations INT, sale_start_date DATE, sale_end_date DATE, price NUMERIC(10, 2))
 AS $$
-    INSERT INTO CoursePackages(package_name, num_free_registrations, sale_start_date, sale_end_date, price)
-        VALUES (package_name, num_free_registrations, sale_start_date, sale_end_date, price);
+    INSERT INTO CoursePackages VALUES (default, sale_start_date, sale_end_date, num_free_registrations, package_name, price);
 $$ LANGUAGE SQL
 
 -- F12
