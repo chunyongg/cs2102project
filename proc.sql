@@ -44,7 +44,10 @@ RETURNS TABLE(_room_id INT, _room_capacity INT, _day DATE, _hours INT[]) AS $$
         FOR target_room in (SELECT * FROM Rooms) LOOP
             LOOP
                 EXIT WHEN current_day > _end_date;
-                
+                IF extract (dow from current_day) in (0,6) THEN
+                    current_day := current_day + 1;
+                    CONTINUE;
+                END IF;
                 FOR unavail_row IN (SELECT * FROM Sessions WHERE sess_date = current_day AND room_id = target_room.room_id) LOOP
                     unavail_hours := array(
                         SELECT date_part('hour', unavail_ref)
