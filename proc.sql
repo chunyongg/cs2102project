@@ -15,7 +15,7 @@ CREATE FUNCTION func_name (...)
 CREATE OR REPLACE FUNCTION find_rooms (_sess_date DATE, _start_time TIMESTAMP, _duration INT)
 RETURNS TABLE(room_id INT) AS $$
     SELECT distinct room_id
-    FROM Sessions
+    FROM Rooms
 	EXCEPT
     SELECT distinct room_id
     FROM Sessions
