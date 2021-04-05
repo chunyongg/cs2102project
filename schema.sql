@@ -174,3 +174,85 @@ create table Redeems (
 	foreign key (package_id, cust_id) references Buys(package_id, cust_id),
 	primary key(cust_id, sess_id)
 );
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- TRIGGERS
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- Trigger for sess end time
+CREATE OR REPLACE FUNCTION check_session_end()
+RETURNS TRIGGER AS $$
+DECLARE
+    _course_id INTEGER;
+    _duration INTEGER;
+    _start_time TIMESTAMP;
+    _end_time TIMESTAMP;
+    _check_end_time TIMESTAMP;
+BEGIN
+    SELECT start_time INTO _start_time FROM Sessions WHERE offering_id = NEW.offering_id AND sess_num = NEW.sess_num;
+    SELECT end_time INTO _end_time FROM Sessions WHERE offering_id = NEW.offering_id AND sess_num = NEW.sess_num;
+    SELECT course_id INTO _course_id FROM CourseOfferings WHERE offering_id = NEW.offering_id;
+    SELECT duration INTO _duration FROM Courses WHERE course_id = _course_id;
+    SELECT (_start_time + (_duration||' hours')::INTERVAL) INTO _check_end_time;
+    IF (_end_time <> _check_end_time) THEN
+        RAISE EXCEPTION 'Duration of the session does not match the duration of the course';
+    END IF;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_session_end_trigger
+BEFORE INSERT OR UPDATE ON Sessions
+FOR EACH ROW EXECUTE FUNCTION check_session_end();
+
+-- Trigger for PartTime/FullTime: Instructor only paid once a month, and paid at the end of the month
+CREATE OR REPLACE FUNCTION check_ft_salary_payment()
+RETURNS TRIGGER AS $$
+DECLARE
+    _ft_payment_date DATE;
+    _last_day_of_month DATE;
+    _number_of_payment_dates INTEGER;
+BEGIN
+    SELECT payment_date INTO _ft_payment_date FROM FullTimeSalary;
+    SELECT end_of_month(_ft_payment_date) INTO _last_day_of_month;
+    SELECT COUNT(DISTINCT payment_date) INTO _number_of_payment_dates FROM FullTimeSalary 
+        WHERE DATE_PART('month', payment_date) = DATE_PART('month', _last_day_of_month) 
+        AND DATE_PART('year', payment_date) = DATE_PART('year', _last_day_of_month);
+    IF (_ft_payment_date <> _last_day_of_month) THEN
+        RAISE EXCEPTION 'Payment date is not at end of the month';
+    END IF;
+	IF (_number_of_payment_dates > 1) THEN
+        RAISE EXCEPTION 'Salaries are paid more than once for this month';
+	END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_ft_payment_date_trigger
+BEFORE INSERT ON FullTimeSalary
+FOR EACH ROW EXECUTE FUNCTION check_ft_salary_payment();
+
+CREATE OR REPLACE FUNCTION check_pt_salary_payment()
+RETURNS TRIGGER AS $$
+DECLARE
+    _pt_payment_date DATE;
+    _last_day_of_month DATE;
+    _number_of_payment_dates INTEGER;
+BEGIN
+    SELECT payment_date INTO _pt_payment_date FROM PartTimeSalary;
+    SELECT end_of_month(_pt_payment_date) INTO _last_day_of_month;
+    SELECT COUNT(DISTINCT payment_date) INTO _number_of_payment_dates FROM PartTimeSalary 
+        WHERE DATE_PART('month', payment_date) = DATE_PART('month', _last_day_of_month) 
+        AND DATE_PART('year', payment_date) = DATE_PART('year', _last_day_of_month);
+    IF (_pt_payment_date <> _last_day_of_month) THEN
+        RAISE EXCEPTION 'Payment date is not at end of the month';
+    END IF;
+	IF (_number_of_payment_dates > 1) THEN
+        RAISE EXCEPTION 'Salaries are paid more than once for this month';
+	END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_pt_payment_date_trigger
+BEFORE INSERT ON PartTimeSalary
+FOR EACH ROW EXECUTE FUNCTION check_pt_salary_payment();
