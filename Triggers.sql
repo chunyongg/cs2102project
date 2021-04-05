@@ -15,7 +15,8 @@ BEGIN
         from (SessionParticipants natural join Sessions) SPS
         where SPS.cust_id = New.cust_id
         and SPS.offering_id = oid)) then
-        raise exception 'Customer has already registered for one of the sessions in the course.';
+        raise exception 'Customer is trying to register for more than one session
+            from the same course offering. Process aborted.';
     else
         return new;
     end if;
@@ -53,6 +54,8 @@ BEGIN
         else
             raise exception 'This Session is full, please try another Session.';
         end if;
+    else
+        return new;
     end if;
 end;
 $$ LANGUAGE plpgsql;
