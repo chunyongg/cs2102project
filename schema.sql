@@ -143,11 +143,11 @@ create table CreditCards (
 
 create table CoursePackages (
 	package_id serial primary key,
-	sale_start_date date not null,
+	sale_start_date date not null check (sale_start_date <= sale_end_date),
 	sale_end_date date not null,
-	num_free_registrations integer not null,
+	num_free_registrations integer not null check (num_free_registrations > 0),
 	package_name text not null,
-	price numeric(10, 2) not null
+	price numeric(10, 2) not null check (price >= 0)
 );
 
 create table Buys (
@@ -199,4 +199,8 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 	FROM Redeems;
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- TRIGGER FUNCTIONS
+
+CREATE TRIGGER after_redeem_session_trigger
+AFTER INSERT ON Redeems
+FOR EACH ROW EXECUTE FUNCTION after_redeem_session_func()
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
