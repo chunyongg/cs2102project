@@ -1,13 +1,5 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- CHUN YONG'S TESTS
-
--- F12
--- select func(...) - returns 0
--- select func(...) - returns 0
-
--- F14
--- select func(...) - returns 0
--- select func(...) - returns 0
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- RUI EN's TESTS
 
@@ -46,16 +38,18 @@ call register_session(2, 7, 1, 'redemption') -- [trigger] there is no more redem
 select get_my_registrations(1) -- returns 2 records
 
 -- F26
--- select promote_courses() - returns all course offerings that haven't ended registration, for all courses that each inactive customer is interested in
+select promote_courses() -- returns all course offerings that haven't ended registration, for all courses that each inactive customer is interested in
 
 -- F27
--- select top_packages(4) - returns packages 6,1,7,2
--- select top_packages(3) - returns packages 6,1,7,2
--- select top_packages(2) - returns packages 6,1
--- select top_packages(2) - returns packages 6
+select top_packages(500) -- returns all packages
+select top_packages(3) -- returns top 3 packages
+select top_packages(2) -- returns top 2 packages
+select top_packages(1) -- returns top 1 package
+select top_packages(0) -- exception raised
+select top_packages(-1) -- exception raised
 
 -- F28
--- select popular_courses()
+select popular_courses()
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- XINYEE's TESTS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
