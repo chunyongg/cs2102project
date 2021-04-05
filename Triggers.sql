@@ -112,15 +112,15 @@ begin
     else
         raise exception 'There is no more redemptions left in the package, redemption of new session failed.';
     end if;
-
 end;
 $$ LANGUAGE plpgsql;
 
--- Trigger on Updating CreditCard
--- Check expiry day is not before current date
 CREATE TRIGGER redeem_session_trigger
 BEFORE INSERT ON Redeems
 FOR EACH ROW EXECUTE FUNCTION redeem_sess();
+
+-- Trigger on Updating CreditCard
+-- Check expiry day is not before current date
 
 CREATE OR REPLACE FUNCTION update_cc() RETURNS TRIGGER AS $$
 BEGIN
