@@ -5,18 +5,14 @@
 -- F23: remove_session
 
 CREATE OR REPLACE PROCEDURE REMOVE_SESSION(_OFFERING_ID integer, SESSION_NUMBER integer) AS $$
-    BEGIN
     DELETE FROM Sessions
     WHERE offering_id = _offering_id
     AND sess_num = session_number;
-    END;
-    $$ LANGUAGE PLPGSQL;
+    $$ LANGUAGE SQL;
 
 -- F24: add_session
 
-CREATE OR REPLACE FUNCTION GETSESSIONEND(SESSION_START TIMESTAMP,
-
-																															OID integer) RETURNS TIMESTAMP AS $$
+CREATE OR REPLACE FUNCTION GETSESSIONEND(SESSION_START TIMESTAMP, OID integer) RETURNS TIMESTAMP AS $$
     DECLARE
     cid integer;
     _duration integer;
@@ -61,12 +57,16 @@ BEGIN
     UPDATE CourseOfferings
     SET seating_capacity = seating_capacity + new_capacity
     WHERE offering_id = NEW.offering_id;
-    ELSIF (TG_OP = 'UPDATE' AND NEW.room_id <> OLD.room_id AND NEW.offering_id = OLD.offering_id) THEN
+    ELSIF (TG_OP = 'UPDATE' AND NEW.room_id <> OLD.room_id) THEN
         SELECT seating_capacity INTO old_capacity FROM Rooms WHERE room_id = OLD.room_id;
-                SELECT seating_capacity INTO new_capacity FROM Rooms WHERE room_id = NEW.room_id;
-    UPDATE CourseOfferings
-    SET seating_capacity = seating_capacity - old_capacity + new_capacity
-    WHERE offering_id = NEW.offering_id;
+        SELECT seating_capacity INTO new_capacity FROM Rooms WHERE room_id = NEW.room_id;
+        UPDATE CourseOfferings
+        SET seating_capacity = seating_capacity - old_capacity
+        WHERE offering_id = OLD.offering_id;
+
+        UPDATE CourseOfferings
+        SET seating_capacity = seating_capacity + new_capacity
+        WHERE offering_id = NEW.offering_id;
     END IF;
     RETURN NULL;
 
@@ -78,36 +78,37 @@ $$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION CHECK_SESSION_REMOVAL() RETURNS TRIGGER AS $$
     DECLARE
-    registered_cust integer;
-    redeemed_cust integer;
+    session_participant_id integer;
     curr_time timestamp;
-    capacity integer;
     BEGIN
     SELECT LOCALTIMESTAMP INTO curr_time;
     IF (OLD.start_time <= curr_time) THEN
-
         RAISE EXCEPTION 'Session has already started and cannot be removed';
     END IF;
 
-    SELECT cust_id INTO registered_cust FROM Registers
+    SELECT cust_id INTO session_participant_id FROM SessionParticipants
     Where sess_id = OLD.sess_id
     limit 1;
 
-    SELECT cust_id INTO redeemed_cust FROM Redeems
-    Where sess_id = OLD.sess_id
-    limit 1;
-
-    IF (registered_cust IS NOT NULL OR redeemed_cust IS NOT NULL) THEN
+    IF (session_participant_id IS NOT NULL) THEN
         Raise Exception 'A session with customers cannot be removed';
     END IF;
+    RETURN OLD;
+    END;
+    $$ LANGUAGE PLPGSQL;
 
+CREATE OR REPLACE FUNCTION AFTER_SESSION_DELETE()
+RETURNS TRIGGER AS $$ 
+DECLARE 
+capacity integer;
+BEGIN 
     SELECT seating_capacity INTO capacity FROM Rooms WHERE room_id = OLD.room_id;
     UPDATE CourseOfferings
     SET seating_capacity = seating_capacity - capacity
     WHERE offering_id = OLD.offering_id;
-    RETURN OLD;
-    END;
-    $$ LANGUAGE PLPGSQL;
+    RETURN NULL;
+END;
+$$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION CHECK_SESSION_ADD() RETURNS TRIGGER AS $$
     DECLARE
@@ -120,6 +121,7 @@ CREATE OR REPLACE FUNCTION CHECK_SESSION_ADD() RETURNS TRIGGER AS $$
     _duration integer;
     hours_taught integer;
     d_date date;
+    j_date date;
     BEGIN
 
     SELECT LOCALTIMESTAMP into curr_time;
@@ -131,7 +133,7 @@ CREATE OR REPLACE FUNCTION CHECK_SESSION_ADD() RETURNS TRIGGER AS $$
     SELECT duration, course_area into _duration, carea from Courses where course_id = cid;
 
 
-    IF (NOT EXISTS (SELECT 1 FROM InstructorSpecializations WHERE emp_id = NEW.instructor_id AND course_area = carea)) THEN
+    IF (NOT EXISTS (SELECT 1 FROM Specializations WHERE emp_id = NEW.instructor_id AND course_area = carea)) THEN
         RAISE EXCEPTION 'Instructor does not specialize in area taught';
     END IF;
 
@@ -151,11 +153,18 @@ CREATE OR REPLACE FUNCTION CHECK_SESSION_ADD() RETURNS TRIGGER AS $$
         RAISE EXCEPTION 'Part time instructor must not teach more than 30 hours in a month';
     END IF;
 
-    SELECT depart_date INTO d_date FROM Employees WHERE emp_id = NEW.instructor_id;
+    SELECT depart_date, join_date INTO d_date, j_date FROM Employees WHERE emp_id = NEW.instructor_id;
 
     IF (d_date IS NOT NULL AND d_date <= NEW.sess_date) THEN 
         RAISE EXCEPTION 'Instructor left already';
     END IF;
+
+    IF (j_date IS NOT NULL AND j_date < NEW.sess_date) THEN 
+        RAISE EXCEPTION 'Instructor has not joined yet';
+    END IF;
+
+    -- Instructor havent join, should reject
+    -- Instructor cannot teach back to back sessions
 
     SELECT sess_id into same_room_session_id FROM Sessions
     WHERE sess_id <> NEW.sess_id AND room_id = NEW.room_id
