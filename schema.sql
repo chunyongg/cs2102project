@@ -198,9 +198,3 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 	SELECT cust_id, sess_id, package_id
 	FROM Redeems;
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- TRIGGER FUNCTIONS
-
-CREATE TRIGGER after_redeem_session_trigger
-AFTER INSERT ON Redeems
-FOR EACH ROW EXECUTE FUNCTION after_redeem_session_func()
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
