@@ -196,7 +196,7 @@ BEGIN
     IF (_end_time <> _check_end_time) THEN
         RAISE EXCEPTION 'Duration of the session does not match the duration of the course';
     END IF;
-    RETURN OLD;
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
