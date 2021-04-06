@@ -1,7 +1,18 @@
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- CHUN YONG'S FUNCTIONS
+-- TRIGGERS AND THEIR FUNCTIONS (put as a pair!)
 
+-- Ensure CourseOffering seating capacity is valid
+-- Update is omitted from this trigger since removal of session can be permitted even if seating capacity drops below target number (F23 remove_session)
+DROP TRIGGER IF EXISTS before_offering_insert_or_update ON CourseOfferings;
+CREATE TRIGGER check_seating_capacity
+BEFORE INSERT ON CourseOfferings
+FOR EACH ROW EXECUTE FUNCTION check_courseofferings_seating_capacity();
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- CHUN YONG'S FUNCTIONS
 
 CREATE OR REPLACE FUNCTION getCourseDuration(cid integer) 
 RETURNS INTEGER AS $$ 
@@ -164,60 +175,3 @@ $$ LANGUAGE plpgsql;
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- MICH's FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION check_is_not_admin_or_manager()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM Administrators WHERE emp_id = NEW.emp_id) OR EXISTS (SELECT 1 FROM Administrators WHERE emp_id = NEW.emp_id) THEN
-        RAISE EXCEPTION 'Part time employee must not be an administrator or manager';
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE PLPGSQL;
-
-CREATE OR REPLACE FUNCTION check_removal_condition()
-RETURNS TRIGGER AS $$
-DECLARE 
-temp_date date;
-BEGIN 
-IF (OLD.depart_date IS NOT NULL AND NEW.depart_date <> OLD.depart_date) THEN
-    RAISE EXCEPTION 'Employee already removed';
-END IF;
-
-IF EXISTS (SELECT 1 FROM CourseAreas WHERE manager_id = OLD.emp_id) THEN 
-    RAISE EXCEPTION 'A manager managing course areas cannot be removed';
-END IF;
-
-IF EXISTS (SELECT 1 FROM CourseOfferings WHERE admin_id = OLD.emp_id AND registration_deadline > NEW.depart_date) THEN 
-    RAISE EXCEPTION 'An administrator handling a course offering with registration deadline after depart date cannot be removed';
-END IF;
-
-SELECT
-    sess_date into temp_date
-from
-    Sessions
-where
-    instructor_id = OLD.emp_id
-ORDER BY
-    sess_date desc
-LIMIT 1;
-IF temp_date > NEW.depart_date THEN 
-    RAISE EXCEPTION 'Instructor is teaching a session that starts after the instructor depart date';
-END IF;
-
-RETURN NEW;
-
-END;
-$$ LANGUAGE PLPGSQL;
-
-CREATE OR REPLACE FUNCTION check_courseofferings_seating_capacity()
-RETURNS TRIGGER AS $$
-BEGIN 
-IF (NEW.seating_capacity < NEW.target_number_registrations) THEN
-    RAISE EXCEPTION 'Seating capacity must not be less than target registrations';
-END IF;
-RETURN NEW;
-END 
-$$ LANGUAGE PLPGSQL;
-

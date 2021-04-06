@@ -200,30 +200,4 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 	SELECT cust_id, sess_id, package_id
 	FROM Redeems;
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- TRIGGER FUNCTIONS
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-DROP TRIGGER IF EXISTS check_part_time_employee ON PartTimeEmployees;
-CREATE TRIGGER check_part_time_employee
-BEFORE INSERT ON PartTimeEmployees
-FOR EACH ROW EXECUTE FUNCTION check_is_not_admin_or_manager();
-
-
--- Ensure instructor or manager or administrator being removed are not teaching any sessions after depart date,
--- managing any course areas, or handling any course offerings
-DROP TRIGGER IF EXISTS check_employee_removal ON EMPLOYEES;
-CREATE TRIGGER check_employee_removal
-BEFORE UPDATE ON Employees
-FOR EACH ROW
-WHEN 
-((NEW.depart_date IS NOT NULL and OLD.depart_date IS NULL)
-OR (OLD.depart_date IS NOT NULL AND NEW.depart_date <> OLD.depart_date)
-)
-EXECUTE FUNCTION check_removal_condition();
-
--- Ensure CourseOffering seating capacity is valid
--- Update is omitted from this trigger since removal of session can be permitted even if seating capacity drops below target number (F23 remove_session)
-DROP TRIGGER IF EXISTS before_offering_insert_or_update ON CourseOfferings;
-CREATE TRIGGER check_seating_capacity
-BEFORE INSERT ON CourseOfferings
-FOR EACH ROW EXECUTE FUNCTION check_courseofferings_seating_capacity();
