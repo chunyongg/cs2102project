@@ -77,10 +77,8 @@ DROP TRIGGER IF EXISTS update_part_time_hours ON Sessions;
 CREATE TRIGGER update_part_time_hours
 AFTER UPDATE ON SESSIONS 
 FOR EACH ROW EXECUTE FUNCTION updateHoursWorked_partTimeInstructor();
-
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
-
 CREATE OR REPLACE FUNCTION get_number_days(d date) 
 RETURNS INTEGER AS $$ 
 	SELECT DATE_PART('days', d);
@@ -93,8 +91,6 @@ SELECT EXTRACT(EPOCH FROM t1 - t2)/3600
 $$ LANGUAGE SQL;
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- CHUN YONG'S FUNCTIONS
-
-
 -- F25 pay_salary
 -- Function is rejected if it is not end of the month
 -- Part time employee pay is calculated by hours worked multiplied by hourly rate
