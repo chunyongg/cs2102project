@@ -79,14 +79,14 @@ BEGIN
             from Buys B
             where B.cust_id = New.cust_id
             and B.redemptions_left > 0)) then -- active
-            return exception 'Customer can only have one active package.';
+            raise exception 'Customer can only have one active package.';
         elsif (exists (select B.package_id
-                  from Buys B, Redeems R, Sessions S
-                  where B.cust_id = New.cust_id
-                    and B.package_id = R.package_id
-                    and R.sess_id = S.sess_id
-                    and S.latest_cancel_date >= CURRENT_DATE)) then -- partially active
-            return exception 'Customer can only have one partially active package.';
+                from Buys B natural join Redeems R natural join Sessions S
+                where B.cust_id = New.cust_id
+                and B.package_id = R.package_id
+                and R.sess_id = S.sess_id
+                and S.latest_cancel_date >= CURRENT_DATE)) then -- partially active
+            raise exception 'Customer can only have one partially active package.';
         else
             return new;
         end if;
@@ -105,15 +105,14 @@ CREATE OR REPLACE FUNCTION redeem_sess() RETURNS TRIGGER AS $$
 declare
     r_left integer;
 begin
-    r_left := (select B.redemptions_left
-        from Buys B
-        where B.cust_id = New.cust_id
-        and B.package_id = New.package_id);
-    if ((select count(*) from Redeems R where R.cust_id = New.cust_id
-        and R.package_id = New.package_id) < r_left) then
-        return New;
-    else
+    select redemptions_left into r_left
+        from Buys
+        where cust_id = New.cust_id
+        and package_id = New.package_id;
+    if (r_left = 0) then
         raise exception 'There is no more redemptions left in the package, redemption of new session failed.';
+    else
+        return new;
     end if;
 end;
 $$ LANGUAGE plpgsql;
@@ -129,7 +128,8 @@ CREATE OR REPLACE FUNCTION update_cc() RETURNS TRIGGER AS $$
 BEGIN
     if (New.expiry_date <= current_date) then
         raise exception 'Credit Card has expired, please update with a valid card.';
-    else return New;
+    else
+        return New;
     end if;
 end;
 $$ LANGUAGE plpgsql;
