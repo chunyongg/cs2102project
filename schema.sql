@@ -201,38 +201,8 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 CREATE OR REPLACE VIEW INSTRUCTORSPECIALIZATIONS AS
 SELECT * FROM SPECIALIZATIONS;
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- TRIGGER FUNCTIONS
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-DROP TRIGGER IF EXISTS BEFORE_SESSION_REMOVAL ON SESSIONS;
--- Rejects deletion if session already started or there are customers signed up for the session
-CREATE TRIGGER BEFORE_SESSION_REMOVAL
-BEFORE
-DELETE ON SESSIONS
-FOR EACH ROW EXECUTE FUNCTION CHECK_SESSION_REMOVAL();
 
--- Rejects insertion if: 
--- Instructor does not specialize in area, 
--- is teaching consecutive sessions, 
--- (for part time) is teaching more than 30 hours,
- -- is teaching two sessions simultaneously, room is occupied
- -- Updates capacity of course offering
-DROP TRIGGER IF EXISTS BEFORE_SESSION_ADD ON SESSIONS;
-CREATE TRIGGER BEFORE_SESSION_ADD
-BEFORE
-INSERT
-OR
-UPDATE ON SESSIONS
-FOR EACH ROW EXECUTE FUNCTION CHECK_SESSION_ADD();
 
--- Updates CourseOffering seating capacity after insertion/update
-DROP TRIGGER IF EXISTS AFTER_SESSION_ADD ON SESSIONS;
-CREATE TRIGGER AFTER_SESSION_ADD AFTER
-INSERT
-OR
-UPDATE ON SESSIONS
-FOR EACH ROW EXECUTE FUNCTION AFTER_SESS_ADD();
 
-DROP TRIGGER IF EXISTS AFTER_SESSION_DELETE ON SESSIONS;
-CREATE TRIGGER AFTER_SESSION_DELETE 
-AFTER DELETE ON SESSIONS 
-FOR EACH ROW EXECUTE FUNCTION AFTER_SESSION_DELETE();
+
+

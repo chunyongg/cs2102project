@@ -1,52 +1,6 @@
-
 	----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	-- CHUN YONG'S FUNCTIONS
+	-- TRIGGERS AND THEIR FUNCTIONS (put as a pair!)
 
-	-- F23: remove_session
-
-	CREATE OR REPLACE PROCEDURE REMOVE_SESSION(_OFFERING_ID integer, SESSION_NUMBER integer) AS $$
-	DELETE FROM Sessions
-	WHERE offering_id = _offering_id
-	AND sess_num = session_number;
-	$$ LANGUAGE SQL;
-
-	-- F24: add_session
-
-	CREATE OR REPLACE FUNCTION GETSESSIONEND(SESSION_START TIMESTAMP, OID integer) RETURNS TIMESTAMP AS $$
-	DECLARE
-	cid integer;
-	_duration integer;
-	end_time timestamp;
-	BEGIN
-	select course_id into cid from CourseOfferings where offering_id = oid;
-	select duration into _duration from Courses where course_id = cid;
-	end_time := session_start + interval '1h' * _duration;
-	RETURN end_time;
-	END;
-	$$ LANGUAGE PLPGSQL;
-
-
-	CREATE OR REPLACE PROCEDURE ADD_SESSION(OFFERING_ID integer, SESSION_NUMBER integer, SESSION_DAY date, SESSION_START TIMESTAMP,
-	INSTRUCTOR_ID integer, ROOM_ID integer) AS $$
-	DECLARE
-	session_end timestamp;
-	latest_cancel date;
-	BEGIN
-	latest_cancel := session_day - 7;
-	SELECT getSessionEnd(session_start, offering_id) into session_end;
-	INSERT INTO Sessions values(DEFAULT, session_number,session_start, session_end, session_day, latest_cancel, instructor_id, offering_id, room_id);
-	END;
-	$$ LANGUAGE PLPGSQL;
-
-	----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	-- RUI EN's FUNCTIONS
-	----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	-- XINYEE's FUNCTIONS
-	----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	-- MICH's FUNCTIONS
-	----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-	-- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
-	----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 	CREATE OR REPLACE FUNCTION AFTER_SESS_ADD() RETURNS TRIGGER AS $$
 	DECLARE
 	old_capacity integer;
@@ -73,8 +27,13 @@
 	END;
 	$$ LANGUAGE PLPGSQL;
 
-
-
+	-- Updates CourseOffering seating capacity after insertion/update
+	DROP TRIGGER IF EXISTS AFTER_SESSION_ADD ON SESSIONS;
+	CREATE TRIGGER AFTER_SESSION_ADD AFTER
+	INSERT
+	OR
+	UPDATE ON SESSIONS
+	FOR EACH ROW EXECUTE FUNCTION AFTER_SESS_ADD();
 
 	CREATE OR REPLACE FUNCTION CHECK_SESSION_REMOVAL() RETURNS TRIGGER AS $$
 	DECLARE
@@ -97,6 +56,13 @@
 	END;
 	$$ LANGUAGE PLPGSQL;
 
+	DROP TRIGGER IF EXISTS BEFORE_SESSION_REMOVAL ON SESSIONS;
+	-- Rejects deletion if session already started or there are customers signed up for the session
+	CREATE TRIGGER BEFORE_SESSION_REMOVAL
+	BEFORE
+	DELETE ON SESSIONS
+	FOR EACH ROW EXECUTE FUNCTION CHECK_SESSION_REMOVAL();
+
 	CREATE OR REPLACE FUNCTION AFTER_SESSION_DELETE()
 	RETURNS TRIGGER AS $$ 
 	DECLARE 
@@ -109,6 +75,12 @@
 	RETURN NULL;
 	END;
 	$$ LANGUAGE PLPGSQL;
+
+
+	DROP TRIGGER IF EXISTS AFTER_SESSION_DELETE ON SESSIONS;
+	CREATE TRIGGER AFTER_SESSION_DELETE 
+	AFTER DELETE ON SESSIONS 
+	FOR EACH ROW EXECUTE FUNCTION AFTER_SESSION_DELETE();
 
 	CREATE OR REPLACE FUNCTION CHECK_SESSION_ADD() RETURNS TRIGGER AS $$
 	DECLARE
@@ -170,9 +142,6 @@
 		RAISE EXCEPTION 'Instructor has not joined yet';
 	END IF;
 
-	-- Instructor havent join, should reject
-	-- Instructor cannot teach back to back sessions
-
 	SELECT sess_id into same_room_session_id FROM Sessions
 	WHERE sess_id <> NEW.sess_id AND room_id = NEW.room_id
 	AND sess_date = NEW.sess_date AND start_time >= NEW.start_time
@@ -186,5 +155,67 @@
 	END;
 	$$ LANGUAGE PLPGSQL;
 
+	-- Rejects insertion if: 
+	-- Instructor does not specialize in area, 
+	-- is teaching consecutive sessions, 
+	-- (for part time) is teaching more than 30 hours,
+	-- is teaching two sessions simultaneously, room is occupied
+	-- Instructor departed
+	-- Instructor haven't joined
+	DROP TRIGGER IF EXISTS BEFORE_SESSION_ADD ON SESSIONS;
+	CREATE TRIGGER BEFORE_SESSION_ADD
+	BEFORE
+	INSERT
+	OR
+	UPDATE ON SESSIONS
+	FOR EACH ROW EXECUTE FUNCTION CHECK_SESSION_ADD();
 
 
+	----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	-- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
+	----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	-- CHUN YONG'S FUNCTIONS
+
+	-- F23: remove_session
+
+	CREATE OR REPLACE PROCEDURE REMOVE_SESSION(_OFFERING_ID integer, SESSION_NUMBER integer) AS $$
+	DELETE FROM Sessions
+	WHERE offering_id = _offering_id
+	AND sess_num = session_number;
+	$$ LANGUAGE SQL;
+
+		-- F24: add_session
+
+	CREATE OR REPLACE FUNCTION GETSESSIONEND(SESSION_START TIMESTAMP, OID integer) RETURNS TIMESTAMP AS $$
+	DECLARE
+	cid integer;
+	_duration integer;
+	end_time timestamp;
+	BEGIN
+	select course_id into cid from CourseOfferings where offering_id = oid;
+	select duration into _duration from Courses where course_id = cid;
+	end_time := session_start + interval '1h' * _duration;
+	RETURN end_time;
+	END;
+	$$ LANGUAGE PLPGSQL;
+
+
+	CREATE OR REPLACE PROCEDURE ADD_SESSION(OFFERING_ID integer, SESSION_NUMBER integer, SESSION_DAY date, SESSION_START TIMESTAMP,
+	INSTRUCTOR_ID integer, ROOM_ID integer) AS $$
+	DECLARE
+	session_end timestamp;
+	latest_cancel date;
+	BEGIN
+	latest_cancel := session_day - 7;
+	SELECT getSessionEnd(session_start, offering_id) into session_end;
+	INSERT INTO Sessions values(DEFAULT, session_number,session_start, session_end, session_day, latest_cancel, instructor_id, offering_id, room_id);
+	END;
+	$$ LANGUAGE PLPGSQL;
+
+	----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	-- RUI EN's FUNCTIONS
+	----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	-- XINYEE's FUNCTIONS
+	----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+	-- MICH's FUNCTIONS
+	----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
