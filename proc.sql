@@ -146,8 +146,10 @@
 
 	SELECT sess_id into same_room_session_id FROM Sessions
 	WHERE sess_id <> NEW.sess_id AND room_id = NEW.room_id
+    -- There exists another session that starts between the start and end times of the session to be added 
     AND (start_time >= NEW.start_time AND start_time < NEW.end_time)
-	OR (start_time <= NEW.start_time AND end_time > start_time) -- There exists another session that 
+    -- There exists another session that starts before the session to be added, but ends after the start time of the session to be added
+	OR (start_time <= NEW.start_time AND end_time > start_time) 
 	limit 1;
 	if (same_room_session_id IS NOT NULL) THEN
 		RAISE EXCEPTION 'Room is occupied at this time';
