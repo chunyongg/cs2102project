@@ -1,7 +1,26 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- TRIGGERS AND THEIR FUNCTIONS (put as a pair!)
 
--- Trigger 1
+CREATE OR REPLACE FUNCTION before_sess_update_check_room_capacity()
+RETURNS TRIGGER AS $$
+DECLARE 
+number_registered INT; 
+room_capacity INT;
+BEGIN 
+    SELECT seating_capacity INTO room_capacity FROM ROOMS WHERE room_id = NEW.room_id;
+    SELECT count(*) INTO number_registered FROM SessionParticipants WHERE sess_id = NEW.sess_id;
+    IF number_registered > seating_capacity THEN 
+        RAISE EXCEPTION 'Room capacity is insufficient for this session';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE PLPGSQL;
+
+DROP TRIGGER IF EXISTS before_sess_update_check_room_capacity ON Sessions 
+BEFORE UPDATE ON SESSIONS 
+FOR EACH ROW EXECUTE FUNCTION before_sess_update_check_room_capacity();
+
+-- Ensures registrant has not registered for this offering before
 CREATE OR REPLACE FUNCTION before_register_check_has_not_registered()
 RETURNS TRIGGER AS $$
 BEGIN 
