@@ -81,7 +81,7 @@ create table CourseOfferings (
 	end_date date not null,
 	registration_deadline date not null check(registration_deadline <= start_date - 10),
 	target_number_registrations integer not null,
-	fees numeric(10, 2) not null check (fees > 0),
+	fees numeric(10, 2) not null check (fees >= 0),
 	seating_capacity integer not null check (seating_capacity > 0),
 	admin_id integer not null references Administrators,
 	course_id integer references Courses(course_id) on delete cascade,
