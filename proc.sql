@@ -16,7 +16,8 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-DROP TRIGGER IF EXISTS before_sess_update_check_room_capacity ON Sessions 
+DROP TRIGGER IF EXISTS before_sess_update_check_room_capacity ON Sessions;
+CREATE TRIGGER before_sess_update_check_room_capacity
 BEFORE UPDATE ON SESSIONS 
 FOR EACH ROW EXECUTE FUNCTION before_sess_update_check_room_capacity();
 
