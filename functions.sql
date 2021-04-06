@@ -38,7 +38,7 @@ declare
     redemptions_left integer;
     cc_number varchar(16);
 begin
-    if (exists (select cust_id from Customers C where C.cust_id = c_id)) then
+    if (not exists (select cust_id from Customers C where C.cust_id = c_id)) then
         raise exception 'Customer details has not been added to system, purchase failed.';
     elsif ((select package_id from CoursePackages CP where CP.package_id = pkg_id) is null) then
         raise exception 'Package does not exist in the system, purchase failed.';
@@ -60,35 +60,32 @@ CREATE OR REPLACE VIEW SessionsInOrder as
     from Sessions
     order by (sess_date, start_time) asc;
 
-CREATE OR REPLACE FUNCTION get_at_least_partially_active_packages(IN c_id integer)
-RETURNS TABLE (package_id integer)
-AS $$
+CREATE OR REPLACE FUNCTION get_at_least_partially_active_package(IN c_id integer)
+RETURNS integer AS $$
 declare
-    curs cursor for (select * from Buys B where B.cust_id = c_id);
-    r record;
-    s record;
+    pid integer;
 begin
-    open curs;
-    loop
-        fetch curs into r;
-        exit when not found;
-        if (r.redemptions_left >= 1) then -- active
-            package_id := r.package_id;
-            return next;
+    pid := (select B.package_id
+        from Buys B
+        where B.cust_id = c_id
+        and B.redemptions_left >= 1);
+    if (pid is not null) then -- active
+        return pid;
+    else
+        -- there exist a session where registered session is at least 7 days from today
+        -- => partially active
+        pid := (select B.package_id
+                from Buys B natural join Redeems R natural join Sessions S
+                where B.cust_id = c_id
+                and B.package_id = R.package_id
+                and R.sess_id = S.sess_id
+                and S.latest_cancel_date >= CURRENT_DATE);
+        if (pid is not null) then
+            return pid;
         else
-            -- there exist a session where registered session is at least 7 days from today
-            -- => partially active
+            return null;
         end if;
-    end loop;
-    for s in (select RS.package_id
-              from (Redeems natural join Sessions) RS
-              where RS.package_id = r.package_id
-                and RS.latest_cancel_date >= CURRENT_DATE)
-        loop
-            package_id := s.package_id;
-            return next;
-        end loop;
-    close curs;
+    end if;
 end;
 $$ LANGUAGE plpgsql;
 
@@ -98,53 +95,62 @@ redemptions_left integer, buy_date date, title text,
 sess_date date, start_time timestamp)
 AS $$
 declare
-    p record;
+    pid integer;
     s record;
     _course_id integer;
 begin
-    for p in select * from get_at_least_partially_active_packages(c_id)
+    pid := get_at_least_partially_active_package(c_id);
+
+    select CP.package_name, CP.price, CP.num_free_registrations
+    into package_name, price, num_free_registrations
+    from CoursePackages CP
+    where CP.package_id = pid;
+
+    select B.redemptions_left, B.buy_date
+    into redemptions_left, buy_date
+    from Buys B
+    where B.package_id = pid and B.cust_id = c_id;
+
+    for s in select sess_id
+        from Redeems R
+        where R.package_id = pid
+        and R.cust_id = c_id
     loop
-        select CP.package_name, CP.price, CP.num_free_registrations
-        into package_name, price, num_free_registrations
-        from CoursePackages CP
-        where CP.package_id = p.package_id;
-
-        select B.redemptions_left, B.buy_date
-        into redemptions_left, buy_date
-        from Buys B
-        where B.package_id = p.package_id and B.cust_id = c_id;
-
-        for s in select sess_id
-            from Redeems R
-            where R.package_id = p.package_id
-        loop
-            _course_id := (select SCO.course_id
-            from (Sessions natural join CourseOfferings)SCO
-            where SCO.sess_id = s
-                .sess_id);
-            title := (select C.title from Courses C where C.course_id = _course_id);
-            select SIO.sess_date, SIO.start_time
-            into sess_date, start_time
-            from SessionsInOrder SIO
-            where SIO.sess_id = s.sess_id;
-            return next;
-        end loop;
+        _course_id := (select SCO.course_id
+        from (Sessions natural join CourseOfferings)SCO
+        where SCO.sess_id = s.sess_id);
+        title := (select C.title from Courses C where C.course_id = _course_id);
+        select SIO.sess_date, SIO.start_time
+        into sess_date, start_time
+        from SessionsInOrder SIO
+        where SIO.sess_id = s.sess_id;
+        return next;
     end loop;
 end;
 $$ LANGUAGE plpgsql;
 
 create or replace function get_my_course_package(IN c_id integer)
-returns json as $$
+returns json[] as $$
 declare
     r record;
+    result json[]; --
 begin
+    result := null;
+    if (not exists (select C.cust_id from Customers C where C.cust_id = c_id)) then
+        raise exception 'Customer is not in the system, please check again.';
+    end if;
     if (not exists (select B.cust_id from Buys B where B.cust_id = c_id)) then
-        raise exception 'Customer details did not buy any Course Package, unable to retrieve Course Package.';
+        raise exception 'Customer did not buy any Course Package, unable to retrieve Course Package.';
     else
         for r in (select * from get_my_course_package_table(c_id))
         loop
-            return row_to_json(r);
+            result := array_append(result, row_to_json(r));
         end loop;
+        if (result is null) then
+            raise exception 'Customer has no active/inactive Course Package.';
+        else
+            return result;
+        end if;
     end if;
 end;
 $$ language plpgsql;
@@ -189,15 +195,23 @@ declare
     rid integer;
     sid integer;
 begin
-    if (not exists(select SP.cust_id from SessionParticipants SP where SP.cust_id = cid)) then
+    if (not exists (select cust_id from Customers C where C.cust_id = cid)) then
+        raise exception 'Customer details has not been added to system, purchase failed.';
+    elsif (not exists(select SP.cust_id from SessionParticipants SP where SP.cust_id = cid)) then
         raise exception 'Customer did not register for any sessions, updating of session failed.';
+    elseif exists(select SCS.sess_id
+        from (SessionParticipants natural join CourseOfferings natural join Sessions)SCS
+        where SCS.cust_id = cid
+        and SCS.offering_id = oid
+        and SCS.sess_num = _sess_num) then
+        raise exception 'Customer is already enrolled in the course session.';
     else
         sid := (select sess_id from Sessions S where S.offering_id = oid and S.sess_num = _sess_num);
         if (sid is null) then
             raise exception 'Session does not exist.';
         else
             rid := (select S.room_id from Sessions S where S.sess_id = sid);
-            if checkRegisterSession(cid, sid) then
+            if (checkRegisterSession(cid, sid) is true) then
                 UPDATE Registers
                 SET sess_id = sid
                 WHERE cust_id = cid;
@@ -218,26 +232,27 @@ declare
     _sess_id integer;
     cancel_date date;
     _sess_date date;
+    pid integer;
     price numeric(10,2);
     refund_amt numeric(10,2);
     package_credit integer;
 begin
     cancel_date := current_date;
-    if (select SP.cust_id from SessionParticipants SP where SP.cust_id = cid limit 1) is null then
+    if not exists(select SP.cust_id from SessionParticipants SP where SP.cust_id = cid) then
         raise exception 'Customer did not register for any sessions, cancellation process failed.';
-    elsif (select CO.offering_id from CourseOfferings CO where CO.offering_id = oid) is null then
+    elsif not exists(select CO.offering_id from CourseOfferings CO where CO.offering_id = oid) then
         raise exception 'Offering does not exist in the system, please check again.';
     else
         _sess_id := (select SPS.sess_id
             from (SessionParticipants natural join Sessions)SPS
             where SPS.offering_id = oid
             and SPS.cust_id = cid);
-        if _sess_id is null then
-            raise exception 'Customer did not register for any session in Course Offering stated, please check again.';
+        if (_sess_id) is null then
+            raise exception 'Customer did not register for any sessions in the offering, please check again.';
         elsif ((select S.start_time from Sessions S where S.sess_id = _sess_id) <= current_timestamp) then
             raise exception 'Session has started stated, cancellation of registration is not allowed.';
         else
-            if (checkRegisterSession(cid, oid)) then                                 S.offering);
+            if (checkRegisterSession(cid, _sess_id)) then
                 package_credit := 0;
                 price := (select CO.fees from CourseOfferings CO where CO.offering_id = oid);
                 _sess_date := (select S.sess_date from Sessions S where S.sess_id = _sess_id and S.offering_id = oid);
@@ -251,7 +266,7 @@ begin
                 and sess_id = _sess_id;
                 INSERT INTO Cancels
                 VALUES (cancel_date, refund_amt, package_credit, cid, _sess_id);
-            elsif (checkRedeemSession(cid, oid)) then
+            elsif (checkRedeemSession(cid, _sess_id)) then
                 _sess_id := (select R.sess_id
                     from Redeems R, Sessions S
                     where R.cust_id = cid
@@ -259,13 +274,22 @@ begin
                     and S.offering_id = oid);
                 refund_amt := 0;
                 package_credit := 1;
+                pid := (select SP.package_id
+                    from SessionParticipants SP
+                    where SP.cust_id = cid
+                    and SP.sess_id = _sess_id);
                 DELETE from Redeems
                 WHERE cust_id = cid
                 and sess_id = _sess_id;
                 INSERT INTO Cancels
                 VALUES (cancel_date, refund_amt, package_credit, cid, _sess_id);
+                UPDATE Buys
+                SET redemptions_left =  redemptions_left + 1
+                WHERE cust_id = cid
+                and package_id = pid;
             end if;
         end if;
+    end if;
 end;
 $$ LANGUAGE plpgsql;
 
@@ -320,6 +344,23 @@ begin
 end;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION get_total_course_offerings_for_area_under_manager(IN emp_id integer)
+RETURNS integer AS $$
+declare
+    a text;
+    course_offering_count integer;
+    total_course_offering integer;
+begin
+    total_course_offering := 0;
+    for a in (select * from get_manager_areas(emp_id)) -- manager take care of everything under the area
+        loop
+            course_offering_count := (select count(*) from get_total_course_offerings_of_area(a));
+            total_course_offering := total_course_offering + course_offering_count;
+        end loop;
+    return total_course_offering;
+end;
+$$ LANGUAGE plpgsql;
+
 CREATE OR REPLACE FUNCTION get_total_net_reg_fee_for_course_offering(IN _offering_id integer)
 RETURNS numeric(10,2)
 AS $$
@@ -327,7 +368,6 @@ declare
     register_fee integer;
     reg_count integer;
     total_net_reg_fee numeric(10,2);
-    cust_package integer;
     package_redemptions integer;
     package_price numeric(10,2);
     sess_price numeric(10,2);
@@ -337,18 +377,20 @@ declare
 begin
     total_net_reg_fee := 0;
     acc_redeem_fee := 0;
+    sess_price := 0;
     register_fee := (select CO.fees from CourseOfferings CO where CO.offering_id = _offering_id);
-    for s in (select S.sess_id from Sessions S where S.offering_id = _offering_id)
+    for s in (select distinct SPS.sess_id
+        from (SessionParticipants natural join Sessions)SPS
+        where SPS.offering_id = _offering_id)
     loop
         reg_count := (select count(*) from Registers R where R.sess_id = s);
         total_net_reg_fee := total_net_reg_fee + (register_fee * reg_count);
-        for c in (select R.cust_id, R.package_id from Redeems R where R.sess_id = s)
+        for c in (select R.package_id from Redeems R where R.sess_id = s)
         loop
-            cust_package := c.package_id;
             select CP.num_free_registrations, CP.price
             into package_redemptions, package_price
             from CoursePackages CP
-            where CP.package_id = cust_package;
+            where CP.package_id = c;
             sess_price := floor(package_price/package_redemptions);
             acc_redeem_fee := acc_redeem_fee + sess_price;
         end loop;
@@ -397,8 +439,6 @@ AS $$
 declare
     curs cursor for (select * from ManagerDetails);
     r record;
-    a record;
-    course_offering_count integer;
 begin
     open curs;
     loop
@@ -406,22 +446,20 @@ begin
         exit when not found;
         emp_name := r.emp_name;
         total_course_area := (select count(*) from get_manager_areas(r.emp_id));
-        total_course_offering := 0;
-        total_net_reg_fees := 0;
-        for a in (select * from get_manager_areas(r.emp_id))
-        loop
-            course_offering_count := (select count(*) from get_total_course_offerings_of_area(a.course_area));
-            total_course_offering := total_course_offering + course_offering_count;
-        end loop;
+        total_course_offering := get_total_course_offerings_for_area_under_manager(r.emp_id);
         total_net_reg_fees := (select sum(total_net_reg_fee) from get_all_areas_offerings_net_fee(r.emp_id));
+        if (total_net_reg_fees is null) then
+            total_net_reg_fees := 0.00;
+        end if;
         With TopCourseOffering as (
             select *
-            from get_all_areas_offerings_net_fee(r.emp_id) as T
+            from get_all_areas_offerings_net_fee(r.emp_id)T
             order by T.total_net_reg_fee desc)
         select array(
             select TCO.course_title
             from TopCourseOffering TCO
-            where TCO.total_net_reg_fee = (select max(total_net_reg_fee) from TopCourseOffering))
+            where TCO.total_net_reg_fee = (select max(total_net_reg_fee) from TopCourseOffering)
+            and TCO.total_net_reg_fee <> 0)
         into highest_net_reg_fee_course_offering;
         return next;
     end loop;
