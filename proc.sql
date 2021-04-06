@@ -9,7 +9,7 @@ room_capacity INT;
 BEGIN 
     SELECT seating_capacity INTO room_capacity FROM ROOMS WHERE room_id = NEW.room_id;
     SELECT count(*) INTO number_registered FROM SessionParticipants WHERE sess_id = NEW.sess_id;
-    IF number_registered > seating_capacity THEN 
+    IF number_registered > room_capacity THEN 
         RAISE EXCEPTION 'Room capacity is insufficient for this session';
     END IF;
     RETURN NEW;
