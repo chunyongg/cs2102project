@@ -43,12 +43,11 @@ declare
 BEGIN
     if (TG_OP = 'INSERT' or (TG_OP = 'UPDATE' and old.sess_id <> new.sess_id)) then
         seat_limit := (select R.seating_capacity
-            from Sessions S, Rooms R
-            where S.sess_id = New.sess_id
-            and S.room_id = R.room_id);
+            from Sessions S natural join Rooms R
+            where S.sess_id = New.sess_id);
         seats_taken := (select count(*)
-            from (SessionParticipants natural join Sessions)SPS
-            where SPS.sess_id = New.sess_id);
+            from SessionParticipants SP
+            where SP.sess_id = New.sess_id);
         if (seats_taken < seat_limit) then
             return new;
         else
@@ -83,8 +82,6 @@ BEGIN
         elsif (exists (select B.package_id
                 from Buys B natural join Redeems R natural join Sessions S
                 where B.cust_id = New.cust_id
-                and B.package_id = R.package_id
-                and R.sess_id = S.sess_id
                 and S.latest_cancel_date >= CURRENT_DATE)) then -- partially active
             raise exception 'Customer can only have one partially active package.';
         else
@@ -137,3 +134,58 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER update_cc_trigger
 BEFORE INSERT or UPDATE ON CreditCards
 FOR EACH ROW EXECUTE FUNCTION update_cc();
+
+--
+
+CREATE OR REPLACE FUNCTION check_sale_period()
+RETURNS TRIGGER AS $$
+declare
+    _sale_start date;
+    _sale_end date;
+begin
+    select CP.sale_start_date, CP.sale_end_date
+        into _sale_start, _sale_end
+        from CoursePackages CP
+        where CP.package_id = New.package_id;
+        if (CURRENT_DATE not between _sale_start and _sale_end) then
+            raise exception 'Course Package not available for Sale.';
+        end if;
+        return New;
+end;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER buy_package_trigger
+BEFORE INSERT ON Buys
+FOR EACH ROW EXECUTE FUNCTION check_sale_period();
+
+--
+CREATE OR REPLACE FUNCTION check_session_period()
+RETURNS TRIGGER AS $$
+declare
+    _curr_sess_start date;
+    _new_sess_start date;
+begin
+    select S.start_time
+    into _curr_sess_start
+    from Sessions S
+    where S.sess_id = old.sess_id;
+    select S.start_time
+    into _new_sess_start
+    from Sessions S
+    where S.sess_id = new.sess_id;
+    if (_curr_sess_start <= LOCALTIMESTAMP or _new_sess_start <= LOCALTIMESTAMP) THEN
+	    RAISE EXCEPTION 'Session already started';
+    end if;
+    return New;
+end;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER change_reg_session_trigger
+BEFORE UPDATE ON Registers
+FOR EACH ROW EXECUTE FUNCTION check_session_period();
+
+CREATE TRIGGER change_redeem_session_trigger
+BEFORE UPDATE ON Redeems
+FOR EACH ROW EXECUTE FUNCTION check_session_period();
+
+--

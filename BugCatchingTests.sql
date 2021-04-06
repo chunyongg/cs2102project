@@ -54,19 +54,32 @@ select get_my_course_package(9);
 -- testcase -> not successful -> user does not exist
 select get_my_course_package(50);
 
---Q19 PASSED
+--Q19 -> fuse with ruien code and test success case for redeems
 -- update_course_session(IN cust_id integer,
--- IN offering_id integer, IN sess_id integer)
-select cust_id, offering_id, sess_id, package_id
-from SessionParticipants natural join CourseOfferings;
+-- IN offering_id integer, IN sess_num integer)
+-- REGISTER
+-- -- choose a sess start time after current time
+-- select cust_id, offering_id, sess_num, sess_id, start_time from Registers natural right join Sessions order by (offering_id, cust_id);
+-- -- old cid 10 oid 5 sessnum 2 sid 9
+-- -- new cid 10 oid 5 sessnum 2 sid 14
+-- -- input: cid,oid,sessnum
+-- call update_course_session(10, 5, 2);
+-- -- check register session change
+-- select cust_id, offering_id, sess_num, sess_id, start_time from Registers natural right join Sessions order by (offering_id, cust_id);
 --
-select offering_id, sess_num, sess_id
-from CourseOfferings natural join Sessions order by offering_id;
---
-select * from Customers;
+-- REDEEMS
+-- -- choose a sess start time after current time
+-- select cust_id, offering_id, sess_num, sess_id, start_time from Redeems natural right join Sessions order by (offering_id, cust_id);
+-- -- old cid 6 oid 6 sessnum 3 sid 86
+-- -- new cid 6 oid 6 sessnum 1 sid 10
+-- -- input: cid,oid,sessnum
+-- call update_course_session(6, 6, 1);
+-- -- check register session change
+-- select cust_id, offering_id, sess_num, sess_id, start_time from Redeems natural right join Sessions order by (offering_id, cust_id);
+
 -- testcase -> successful
 call update_course_session(2, 8, 7);
-call update_course_session(5, 6, 5); -- pass but table 1 doesnt show change in sess num
+call update_course_session(5, 6, 5);
 -- testcase -> not successful -> customer already in session
 call update_course_session(5, 6, 1);
 -- testcase -> not successful -> customer did not register for any session
@@ -78,47 +91,26 @@ call update_course_session(1, 11, 2);
 call update_course_session(2, 8, 6);
 
 
---Q20 PASSED
+--Q20 PASSED -> move some code to triggers
 -- cancel_registration(IN cust_id integer, IN offering_id integer)
 -- CANCEL REDEEM SUCCESS
--- -- to see who to add to redemption
--- select * from Buys;
--- -- to see which session haven start so can cancel
--- select start_time, sess_id, offering_id, sess_num from Sessions;
--- -- CHOSEN sid 9 oid 5
--- -- give sid, pid, cid
--- insert into Redeems values(CURRENT_DATE, 9, 1, 1);
--- -- to see session, offering, package that customer bought and redeemed
--- select cust_id, offering_id, sess_num, sess_id, package_id
--- from SessionParticipants
---     natural join CourseOfferings
---     natural join Sessions
--- where package_id is not null
--- and cust_id = 1
--- order by cust_id;
--- -- to see redemptions
--- select * from Redeems where cust_id = 1;
 -- -- see who bought packages and how many redemptions left
--- select * from Buys where cust_id = 1;
+-- -- choose start time later than current
+-- select cust_id, sess_id, offering_id, package_id, redemptions_left, start_time from Sessions natural join Redeems natural join Buys ;
+-- -- cid 25, sid 15, oid 7, pid 8, rleft 0
 -- -- cancel registration -> give cid and oid
--- call cancel_registration(1, 5);
+-- call cancel_registration(25, 7);
 -- -- see cancel table
 -- select * from Cancels;
+-- -- check if its in redeems table
+-- select * from Redeems where cust_id = 25;
 --
 -- CANCEL REGISTER SUCCESS
--- -- to see which session haven start so can cancel
--- select start_time, sess_id, offering_id, sess_num from Sessions;
--- -- CHOSEN sid 13 oid 4
--- -- to who has not sign up for any session
--- select * from SessionParticipants;
--- -- to see cc_num of customer
--- select * from CreditCards where cust_id = 3;
--- -- give reg_date, cid, sid, cc_num
--- insert into Registers values(CURRENT_DATE, 3, 13, '4347465053571468');
--- -- to see Register
--- select * from Registers where cust_id = 3;
+-- -- find one start date not near to cancel
+-- select cust_id, offering_id, sess_id, start_time from Registers natural join Sessions;
+-- -- cid 5 oid 5 sid 9
 -- -- cancel registration -> give cid and oid
--- call cancel_registration(3, 4);
+-- call cancel_registration(5, 5);
 -- -- see cancel table
 -- select * from Cancels;
 -- -- see removed from Registers
