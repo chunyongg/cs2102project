@@ -1,5 +1,100 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- TRIGGERS AND THEIR FUNCTIONS (put as a pair!)
+
+CREATE OR REPLACE FUNCTION insertHoursWorked_partTimeInstructor()
+RETURNS TRIGGER AS $$
+DECLARE 
+inst_id integer;
+new_hours_worked integer;
+BEGIN 
+    inst_id := NEW.instructor_id;
+        IF (NOT EXISTS (SELECT 1 FROM PartTimeInstructors WHERE emp_id = inst_id)) THEN 
+        RETURN NULL;
+    END IF;
+        new_hours_worked := get_difference_in_hours(NEW.end_time, NEW.start_time);
+        INSERT INTO PartTimeHoursWorked 
+        VALUES (new_hours_worked, date_trunc('month', NEW.sess_date), inst_id)
+        ON CONFLICT (month_year, emp_id) DO UPDATE SET hours_worked = EXCLUDED.hours_worked + new_hours_worked;
+    RETURN NULL;
+END;
+$$ LANGUAGE PLPGSQL;
+
+DROP TRIGGER IF EXISTS insert_part_time_hours ON SESSIONS;
+CREATE TRIGGER insert_part_time_hours
+AFTER INSERT ON SESSIONS 
+FOR EACH ROW EXECUTE FUNCTION insertHoursWorked_partTimeInstructor();
+
+CREATE OR REPLACE FUNCTION removeHoursWorked_partTimeInstructor()
+RETURNS TRIGGER AS $$
+DECLARE 
+inst_id integer;
+old_hours_worked integer;
+BEGIN 
+    inst_id := OLD.instructor_id;
+        IF (NOT EXISTS (SELECT 1 FROM PartTimeInstructors WHERE emp_id = inst_id)) THEN 
+        RETURN NULL;
+    END IF;
+    old_hours_worked := get_difference_in_hours(OLD.end_time, OLD.start_time);
+
+    UPDATE PartTimeHoursWorked
+    SET hours_worked = hours_worked - old_hours_worked
+    WHERE emp_id = OLD.instructor_id AND month_year = date_trunc('month', OLD.sess_date);
+    RETURN NULL;
+END;
+$$ LANGUAGE PLPGSQL;
+
+DROP TRIGGER IF EXISTS after_sess_delete_update_pt_hours ON SESSIONS;
+CREATE TRIGGER after_sess_delete_update_pt_hours
+AFTER DELETE ON SESSIONS
+FOR EACH ROW EXECUTE FUNCTION removeHoursWorked_partTimeInstructor();
+
+
+CREATE OR REPLACE FUNCTION updateHoursWorked_partTimeInstructor()
+RETURNS TRIGGER AS $$
+DECLARE 
+inst_id integer;
+hours_worked integer;
+old_hours_worked integer;
+new_hours_worked integer;
+BEGIN 
+    inst_id := NEW.instructor_id;
+
+    old_hours_worked := get_difference_in_hours(OLD.end_time, OLD.start_time);
+    new_hours_worked := get_difference_in_hours(NEW.end_time, NEW.start_time);
+
+    INSERT INTO PartTimeHoursWorked 
+    VALUES (new_hours_worked, date_trunc('month', NEW.sess_date), inst_id)
+    ON CONFLICT (month_year, emp_id) DO UPDATE SET hours_worked = EXCLUDED.hours_worked + new_hours_worked;
+    
+    UPDATE PartTimeHoursWorked
+    SET hours_worked = hours_worked - old_hours_worked
+    WHERE emp_id = OLD.instructor_id AND month_year = date_trunc('month', OLD.sess_date);
+
+RETURN NULL;
+END;
+$$ LANGUAGE PLPGSQL;
+
+DROP TRIGGER IF EXISTS update_part_time_hours ON Sessions; 
+CREATE TRIGGER update_part_time_hours
+AFTER UPDATE ON SESSIONS 
+FOR EACH ROW EXECUTE FUNCTION updateHoursWorked_partTimeInstructor();
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
+
+CREATE OR REPLACE FUNCTION get_number_days(d date) 
+RETURNS INTEGER AS $$ 
+	SELECT DATE_PART('days', d);
+$$ LANGUAGE SQL;
+
+
+CREATE OR REPLACE FUNCTION get_difference_in_hours(t1 timestamp, t2 timestamp) 
+RETURNS INTEGER AS $$
+SELECT EXTRACT(EPOCH FROM t1 - t2)/3600
+$$ LANGUAGE SQL;
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- CHUN YONG'S FUNCTIONS
+
 
 -- F25 pay_salary
 -- Function is rejected if it is not end of the month
@@ -136,7 +231,6 @@ salary_earned numeric(10,2)
     UNION 
     SELECT * FROM pay_PartTimeEmployees();
 $$ LANGUAGE SQL;
-
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- RUI EN's FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -144,96 +238,3 @@ $$ LANGUAGE SQL;
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- MICH's FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-CREATE OR REPLACE FUNCTION get_number_days(d date) 
-RETURNS INTEGER AS $$ 
-	SELECT DATE_PART('days', d);
-$$ LANGUAGE SQL;
-
-CREATE OR REPLACE FUNCTION insertHoursWorked_partTimeInstructor()
-RETURNS TRIGGER AS $$
-DECLARE 
-inst_id integer;
-new_hours_worked integer;
-BEGIN 
-    inst_id := NEW.instructor_id;
-        IF (NOT EXISTS (SELECT 1 FROM PartTimeInstructors WHERE emp_id = inst_id)) THEN 
-        RETURN NULL;
-    END IF;
-        new_hours_worked := get_difference_in_hours(NEW.end_time, NEW.start_time);
-        INSERT INTO PartTimeHoursWorked 
-        VALUES (new_hours_worked, date_trunc('month', NEW.sess_date), inst_id)
-        ON CONFLICT (month_year, emp_id) DO UPDATE SET hours_worked = EXCLUDED.hours_worked + new_hours_worked;
-    RETURN NULL;
-END;
-$$ LANGUAGE PLPGSQL;
-
-CREATE OR REPLACE FUNCTION removeHoursWorked_partTimeInstructor()
-RETURNS TRIGGER AS $$
-DECLARE 
-inst_id integer;
-old_hours_worked integer;
-BEGIN 
-    inst_id := OLD.instructor_id;
-        IF (NOT EXISTS (SELECT 1 FROM PartTimeInstructors WHERE emp_id = inst_id)) THEN 
-        RETURN NULL;
-    END IF;
-        old_hours_worked := get_difference_in_hours(OLD.end_time, OLD.start_time);
-        UPDATE PartTimeHoursWorked PTH
-        SET PTH.hours_worked = PTH.hours_worked - old_hours_worked
-        WHERE PTH.emp_id = inst_id AND PTH.month_year = date_trunc('month', OLD.sess_date);
-    RETURN NULL;
-END;
-$$ LANGUAGE PLPGSQL;
-
-CREATE OR REPLACE FUNCTION updateHoursWorked_partTimeInstructor()
-RETURNS TRIGGER AS $$
-DECLARE 
-inst_id integer;
-hours_worked integer;
-old_hours_worked integer;
-new_hours_worked integer;
-BEGIN 
-    inst_id := NEW.instructor_id;
-
-    old_hours_worked := get_difference_in_hours(OLD.end_time, OLD.start_time);
-    new_hours_worked := get_difference_in_hours(NEW.end_time, NEW.start_time);
-
-        IF (NEW.inst_id = OLD.inst_id) THEN 
-        -- Same instructor, just update difference in hours taught
-        -- Must be split into two operations in case the month-year of old and new session are not the same
-
-        -- Upsert if pt-instructor
-        IF (EXISTS (SELECT 1 FROM PartTimeInstructors WHERE emp_id = inst_id)) THEN 
-            INSERT INTO PartTimeHoursWorked 
-            VALUES (new_hours_worked, date_trunc('month', NEW.sess_date), inst_id)
-            ON CONFLICT (month_year, emp_id) DO UPDATE SET hours_worked = hours_worked + new_hours_worked;
-        END IF;
-
-        -- No entries will be updated if instructor is full time
-        UPDATE PartTimeHoursWorked PTH
-        SET PTH.hours_worked = PTH.hours_worked - old_hours_worked
-        WHERE PTH.emp_id = inst_id AND PTH.month_year = date_trunc('month', OLD.sess_date);
-
-        ELSE 
-        -- Different instructor, must update both old and new instructor
-        -- No entries will be updated if instructor is full time
-        UPDATE PartTimeHoursWorked PTH
-        SET PTH.hours_worked = PTH.hours_worked + new_hours_worked
-        WHERE PTH.emp_id = inst_id AND PTH.month_year = date_trunc('month', NEW.sess_date);
-        
-        UPDATE PartTimeHoursWorked PTH
-        SET PTH.hours_worked = PTH.hours_worked - old_hours_worked
-        WHERE PTH.emp_id = OLD.instructor_id AND PTH.month_year = date_trunc('month', OLD.sess_date);
-        END IF;
-
-RETURN NULL;
-END;
-$$ LANGUAGE PLPGSQL;
-
-CREATE OR REPLACE FUNCTION get_difference_in_hours(t1 timestamp, t2 timestamp) 
-RETURNS INTEGER AS $$
-SELECT EXTRACT(EPOCH FROM t1 - t2)/3600
-$$ LANGUAGE SQL;

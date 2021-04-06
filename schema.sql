@@ -217,3 +217,7 @@ DROP TRIGGER IF EXISTS insert_part_time_hours ON SESSIONS;
 CREATE TRIGGER insert_part_time_hours
 AFTER INSERT ON SESSIONS 
 FOR EACH ROW EXECUTE FUNCTION insertHoursWorked_partTimeInstructor();
+
+CREATE TRIGGER after_sess_delete_update_pt_hours
+AFTER DELETE ON SESSIONS
+FOR EACH ROW EXECUTE FUNCTION removeHoursWorked_partTimeInstructor();
