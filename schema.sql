@@ -149,9 +149,9 @@ create table CoursePackages (
   package_id serial primary key,
   sale_start_date date not null,
   sale_end_date date not null,
-  num_free_registrations integer not null,
+  num_free_registrations integer not null check(price > 0),
   package_name text not null,
-  price numeric(10, 2) not null
+  price numeric(10, 2) not null check(price >= 0)
 );
 
 create table Buys (
