@@ -119,22 +119,46 @@ RETURNS TABLE (eid INTEGER, e_name TEXT) AS $$
 $$ LANGUAGE sql;
 
 -- F7
+-- CREATE OR REPLACE FUNCTION get_available_instructors (
+-- IN cid INTEGER, IN s_date DATE, IN e_date DATE)
+-- RETURNS TABLE(emp_id INTEGER, emp_name TEXT, current_monthly_hours DOUBLE PRECISION, day DATE, avail_hours INTEGER[]) AS $$
+-- SELECT DISTINCT emp_id, emp_name, get_monthly_hours(emp_id, DATE_PART('month', CURRENT_DATE), DATE_PART('year', CURRENT_DATE)), sess_date, get_avail_hours(emp_id, sess_date)
+-- FROM Employees
+-- NATURAL JOIN Specializations
+-- INNER JOIN Courses
+-- ON Specializations.course_area = Courses.course_area
+-- INNER JOIN CourseOfferings
+-- ON Courses.course_id = CourseOfferings.course_id
+-- INNER JOIN Sessions
+-- ON CourseOfferings.offering_id = Sessions.offering_id
+-- WHERE Courses.course_id = cid
+-- AND sess_date BETWEEN s_date AND e_date
+-- AND (
+--         (get_emp_status(emp_id) = 'Part Time' AND get_monthly_hours(emp_id, DATE_PART('month', sess_date), DATE_PART('year', sess_date)) <= 29) 
+--         OR get_emp_status(emp_id) = 'Full Time'
+-- );
+-- $$ LANGUAGE sql;
+
 CREATE OR REPLACE FUNCTION get_available_instructors (
 IN cid INTEGER, IN s_date DATE, IN e_date DATE)
 RETURNS TABLE(emp_id INTEGER, emp_name TEXT, current_monthly_hours DOUBLE PRECISION, day DATE, avail_hours INTEGER[]) AS $$
-SELECT DISTINCT emp_id, emp_name, get_monthly_hours(emp_id, DATE_PART('month', CURRENT_DATE), DATE_PART('year', CURRENT_DATE)), sess_date, get_avail_hours(emp_id, sess_date)
+WITH AllSessionDates AS (
+    SELECT date_trunc('day', dd):: DATE AS day
+    FROM generate_series(s_date::TIMESTAMP , e_date::TIMESTAMP , '1 day'::interval) dd
+)
+SELECT DISTINCT Specializations.emp_id, emp_name, get_monthly_hours(Specializations.emp_id, DATE_PART('month', CURRENT_DATE), DATE_PART('year', CURRENT_DATE)), day, get_avail_hours(Specializations.emp_id, day)
 FROM Employees
+CROSS JOIN AllSessionDates
 NATURAL JOIN Specializations
 INNER JOIN Courses
 ON Specializations.course_area = Courses.course_area
 INNER JOIN CourseOfferings
 ON Courses.course_id = CourseOfferings.course_id
-INNER JOIN Sessions
-ON CourseOfferings.offering_id = Sessions.offering_id
 WHERE Courses.course_id = cid
+AND day BETWEEN s_date AND e_date
 AND (
-        (get_emp_status(emp_id) = 'Part Time' AND get_monthly_hours(emp_id, DATE_PART('month', sess_date), DATE_PART('year', sess_date)) <= 29) 
-        OR get_emp_status(emp_id) = 'Full Time'
+        (get_emp_status(Specializations.emp_id) = 'Part Time' AND get_monthly_hours(Specializations.emp_id, DATE_PART('month', day), DATE_PART('year', day)) <= 29) 
+        OR get_emp_status(Specializations.emp_id) = 'Full Time'
 );
 $$ LANGUAGE sql;
 
@@ -164,10 +188,24 @@ RETURNS TABLE(session_date DATE, session_hour INTEGER, inst_name TEXT, seat_rema
     WITH RegistrationCount AS (
         SELECT sess_id, (seating_capacity - COUNT(sess_id)) AS remaining
 		FROM SessionParticipants
-		NATURAL RIGHT JOIN Sessions
-		NATURAL JOIN Rooms
+        NATURAL JOIN Sessions
+        INNER JOIN Rooms
+        ON Sessions.room_id = Rooms.room_id
 		GROUP BY sess_id, seating_capacity
-		ORDER BY sess_id
+    ), SessionsWithZeroRegistration AS (
+        SELECT sess_id, (seating_capacity - 0) AS remaining 
+        FROM Sessions INNER JOIN Rooms
+        ON Sessions.room_id = Rooms.room_id
+        EXCEPT
+        SELECT sess_id, (seating_capacity - 0) AS remaining 
+        FROM SessionParticipants 
+        NATURAL JOIN Sessions 
+        INNER JOIN Rooms
+        ON Sessions.room_id = Rooms.room_id
+    ), TotalCount AS (
+        SELECT * FROM RegistrationCount
+        UNION
+        SELECT * FROM SessionsWithZeroRegistration
     )
     SELECT sess_date, DATE_PART('hour', start_time), emp_name, remaining
     FROM Sessions
@@ -175,7 +213,7 @@ RETURNS TABLE(session_date DATE, session_hour INTEGER, inst_name TEXT, seat_rema
     ON Sessions.offering_id = CourseOfferings.offering_id
     INNER JOIN Employees
     ON Sessions.instructor_id = Employees.emp_id
-    NATURAL LEFT JOIN RegistrationCount
+    NATURAL LEFT JOIN TotalCount
     WHERE CURRENT_DATE <= registration_deadline
     AND remaining > 0
     AND CourseOfferings.offering_id = oid
