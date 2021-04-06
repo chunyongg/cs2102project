@@ -19,7 +19,7 @@ create table PartTimeEmployees(
 );
 
 create table FullTimeSalary(
-	salary_amt numeric(10, 2) not null check (salary_amt > 0),
+	salary_amt numeric(10, 2) not null check (salary_amt >= 0),
 	payment_date date,
 	days integer not null check (days >= 0),
 	emp_id integer references FullTimeEmployees,
@@ -27,7 +27,7 @@ create table FullTimeSalary(
 );
 
 create table PartTimeSalary(
-	salary_amt numeric(10, 2) not null check (salary_amt > 0),
+	salary_amt numeric(10, 2) not null check (salary_amt >= 0),
 	payment_date date,
 	hours integer not null check (hours >= 0),
 	emp_id integer references PartTimeEmployees,
