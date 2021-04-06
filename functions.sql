@@ -232,6 +232,7 @@ declare
     _sess_id integer;
     cancel_date date;
     _sess_date date;
+    _latest_date date;
     pid integer;
     price numeric(10,2);
     refund_amt numeric(10,2);
@@ -255,8 +256,15 @@ begin
             if (checkRegisterSession(cid, _sess_id)) then
                 package_credit := 0;
                 price := (select CO.fees from CourseOfferings CO where CO.offering_id = oid);
-                _sess_date := (select S.sess_date from Sessions S where S.sess_id = _sess_id and S.offering_id = oid);
-                if (select (_sess_date - cancel_date) >= 7) then
+                _sess_date := (select S.sess_date
+                    from Sessions S
+                    where S.sess_id = _sess_id
+                    and S.offering_id = oid);
+                _latest_date := (select S.latest_cancel_date
+                    from Sessions S
+                    where S.sess_id = _sess_id
+                    and S.offering_id = oid);
+                if (select (cancel_date <= _latest_date)) then
                     refund_amt := price * 9/10;
                 else
                     refund_amt := 0;
@@ -267,13 +275,19 @@ begin
                 INSERT INTO Cancels
                 VALUES (cancel_date, refund_amt, package_credit, cid, _sess_id);
             elsif (checkRedeemSession(cid, _sess_id)) then
-                _sess_id := (select R.sess_id
-                    from Redeems R, Sessions S
-                    where R.cust_id = cid
-                    and S.sess_id = R.sess_id
-                    and S.offering_id = oid);
                 refund_amt := 0;
-                package_credit := 1;
+                _latest_date := (select S.latest_cancel_date
+                    from Sessions S
+                    where S.sess_id = _sess_id
+                    and S.offering_id = oid);
+                if (select (cancel_date <= _latest_date)) then
+                    package_credit := 1;
+                    UPDATE Buys
+                    SET redemptions_left =  redemptions_left + 1
+                    WHERE cust_id = cid
+                    and package_id = pid;
+                else
+                    package_credit := 0;
                 pid := (select SP.package_id
                     from SessionParticipants SP
                     where SP.cust_id = cid
@@ -283,10 +297,6 @@ begin
                 and sess_id = _sess_id;
                 INSERT INTO Cancels
                 VALUES (cancel_date, refund_amt, package_credit, cid, _sess_id);
-                UPDATE Buys
-                SET redemptions_left =  redemptions_left + 1
-                WHERE cust_id = cid
-                and package_id = pid;
             end if;
         end if;
     end if;
