@@ -11,9 +11,11 @@ select find_rooms('2021-01-01 10:30:00', 1) -- no
 select find_rooms('2021-01-01 11:00:00', 1) -- no
 select find_rooms('2021-01-01 11:30:00', 1) -- no
 select find_rooms('2021-01-01 12:00:00', 1) -- yes
+select find_rooms('2021-04-10 09:00:00', 1) -- invalid as it is a weekend
+select find_rooms('2021-04-06 12:00:00', 1) -- invalid as it is a non-operational hour
 
 -- F9
-select get_available_rooms('2021-01-06', '2021-01-05') -- exception raised
+select get_available_rooms('2021-01-06', '2021-01-05') -- invalid as start date is before end date
 select get_available_rooms('2021-01-04', '2021-01-05') -- returns (1, 20, 2021-01-04, {10,14,16}) as it is used from 9am-10am, 11am-12pm, 3pm-4pm, 5pm-6pm
 select get_available_rooms('2021-01-08', '2021-01-08') -- returns {9}
 
