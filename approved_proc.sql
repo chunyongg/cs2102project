@@ -53,7 +53,6 @@ CREATE OR REPLACE FUNCTION updateHoursWorked_partTimeInstructor()
 RETURNS TRIGGER AS $$
 DECLARE 
 inst_id integer;
-hours_worked integer;
 old_hours_worked integer;
 new_hours_worked integer;
 BEGIN 
