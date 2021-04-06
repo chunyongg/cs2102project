@@ -146,8 +146,8 @@
 
 	SELECT sess_id into same_room_session_id FROM Sessions
 	WHERE sess_id <> NEW.sess_id AND room_id = NEW.room_id
-    AND start_time BETWEEN NEW.start_time
-	AND end_time <= NEW.end_time
+    AND (start_time >= NEW.start_time AND start_time < NEW.end_time)
+	OR (end_time > NEW.start_time AND )
 	limit 1;
 	if (same_room_session_id IS NOT NULL) THEN
 		RAISE EXCEPTION 'Room is occupied at this time';
