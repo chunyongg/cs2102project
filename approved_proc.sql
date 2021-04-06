@@ -3,7 +3,9 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- TRIGGERS AND THEIR FUNCTIONS (put as a pair!)
 
--- This trigger updates Buys after each redemption by a customer, where the value of the redemptions_left of the customer's course package will decrease
+-- Trigger which updates Buys after each redemption by a customer
+-- The value of the redemptions_left of the customer's course package will decrease after the redemption
+
 CREATE OR REPLACE FUNCTION after_redeem_session_func()
 RETURNS TRIGGER AS $$
     BEGIN
@@ -41,7 +43,7 @@ RETURNS TABLE(_room_id INT) AS $$
         WHERE (start_time, end_time) overlaps (_start_time, _start_time + interval '1h' * _duration)
         ORDER BY room_id;
     END;
-$$ LANGUAGE PLPGSQL
+$$ LANGUAGE PLPGSQL;
 
 -- F9
 CREATE OR REPLACE FUNCTION get_available_rooms_helper (_start_date DATE, _end_date DATE)
