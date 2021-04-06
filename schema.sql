@@ -106,7 +106,7 @@ create table Sessions (
 			from
 				start_time
 		) in (1, 2, 3, 4, 5)
-	),
+	),	
 	end_time timestamp not null check (
 		end_time > start_time
 		and date_part('hour', end_time) <= 18

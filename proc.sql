@@ -112,7 +112,7 @@
 
 	FOR unavailable_hour IN SELECT get_total_session_hours(NEW.instructor_id, NEW.sess_date)
 	LOOP
-		IF (unavailable_hour BETWEEN NEW.start_time AND NEW.end_time) THEN
+		IF (unavailable_hour BETWEEN extract(hour FROM NEW.start_time) AND extract(hour FROM NEW.end_time)) THEN
 			RAISE EXCEPTION 'Give the poor instructor a break!';
 		END IF;
 	END LOOP;
@@ -138,7 +138,7 @@
 		RAISE EXCEPTION 'Instructor left already';
 	END IF;
 
-	IF (j_date IS NOT NULL AND j_date < NEW.sess_date) THEN 
+	IF (j_date IS NOT NULL AND j_date > NEW.sess_date) THEN 
 		RAISE EXCEPTION 'Instructor has not joined yet';
 	END IF;
 
