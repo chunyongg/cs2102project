@@ -205,19 +205,3 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 	SELECT cust_id, sess_id, package_id
 	FROM Redeems;
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- TRIGGER FUNCTIONS
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-DROP TRIGGER IF EXISTS update_part_time_hours ON Sessions; 
-CREATE TRIGGER update_part_time_hours
-AFTER UPDATE ON SESSIONS 
-FOR EACH ROW EXECUTE FUNCTION updateHoursWorked_partTimeInstructor();
-
-DROP TRIGGER IF EXISTS insert_part_time_hours ON SESSIONS;
-CREATE TRIGGER insert_part_time_hours
-AFTER INSERT ON SESSIONS 
-FOR EACH ROW EXECUTE FUNCTION insertHoursWorked_partTimeInstructor();
-
-CREATE TRIGGER after_sess_delete_update_pt_hours
-AFTER DELETE ON SESSIONS
-FOR EACH ROW EXECUTE FUNCTION removeHoursWorked_partTimeInstructor();
