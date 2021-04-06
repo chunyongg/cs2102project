@@ -136,7 +136,7 @@
 
 	SELECT depart_date, join_date INTO d_date, j_date FROM Employees WHERE emp_id = NEW.instructor_id;
 
-	IF (d_date IS NOT NULL AND d_date <= NEW.sess_date) THEN 
+	IF (d_date IS NOT NULL AND d_date < NEW.sess_date) THEN 
 		RAISE EXCEPTION 'Instructor left already';
 	END IF;
 
@@ -146,7 +146,7 @@
 
 	SELECT sess_id into same_room_session_id FROM Sessions
 	WHERE sess_id <> NEW.sess_id AND room_id = NEW.room_id
-	AND sess_date = NEW.sess_date AND start_time >= NEW.start_time
+    AND start_time BETWEEN NEW.start_time
 	AND end_time <= NEW.end_time
 	limit 1;
 	if (same_room_session_id IS NOT NULL) THEN
