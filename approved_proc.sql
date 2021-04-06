@@ -1,7 +1,5 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
-
--- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
 CREATE OR REPLACE FUNCTION get_number_days(d date) 
 RETURNS INTEGER AS $$ 
 	SELECT DATE_PART('days', d);
