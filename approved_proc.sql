@@ -1,6 +1,5 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Get instructor's work hours for that month
 CREATE OR REPLACE FUNCTION get_monthly_hours (
     IN eid INTEGER, IN mth DOUBLE PRECISION, IN yr DOUBLE PRECISION, 
@@ -97,7 +96,86 @@ END
 FROM avail_hours, unnest(array1) hour
 WHERE hour <> all(array2)
 $$ LANGUAGE sql;
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- TRIGGERS AND THEIR FUNCTIONS (put as a pair!)
+-- Trigger for sess end time (match duration of course)
+CREATE OR REPLACE FUNCTION check_session_end()
+RETURNS TRIGGER AS $$
+DECLARE
+    _course_id INTEGER;
+    _duration INTEGER;
+    _start_time TIMESTAMP;
+    _end_time TIMESTAMP;
+    _check_end_time TIMESTAMP;
+BEGIN
+    _start_time := NEW.start_time;
+	_end_time := NEW.end_time;
+    SELECT course_id INTO _course_id FROM CourseOfferings WHERE offering_id = NEW.offering_id;
+    SELECT duration INTO _duration FROM Courses WHERE course_id = _course_id;
+    SELECT (_start_time + (_duration||' hours')::INTERVAL) INTO _check_end_time;
+    IF (_end_time <> _check_end_time) THEN
+        RAISE EXCEPTION 'Duration of the session does not match the duration of the course';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
+CREATE TRIGGER check_session_end_trigger
+BEFORE INSERT OR UPDATE ON Sessions
+FOR EACH ROW EXECUTE FUNCTION check_session_end();
+
+-- Trigger for PartTime/FullTime: Instructor only paid once a month, and paid at the end of the month
+CREATE OR REPLACE FUNCTION check_ft_salary_payment()
+RETURNS TRIGGER AS $$
+DECLARE
+    _ft_payment_date DATE;
+    _last_day_of_month DATE;
+    _number_of_payment_dates INTEGER;
+BEGIN
+    SELECT payment_date INTO _ft_payment_date FROM FullTimeSalary;
+    SELECT end_of_month(_ft_payment_date) INTO _last_day_of_month;
+    SELECT COUNT(DISTINCT payment_date) INTO _number_of_payment_dates FROM FullTimeSalary 
+        WHERE DATE_PART('month', payment_date) = DATE_PART('month', _last_day_of_month) 
+        AND DATE_PART('year', payment_date) = DATE_PART('year', _last_day_of_month);
+    IF (_ft_payment_date <> _last_day_of_month) THEN
+        RAISE EXCEPTION 'Payment date is not at end of the month';
+    END IF;
+	IF (_number_of_payment_dates > 1) THEN
+        RAISE EXCEPTION 'Salaries are paid more than once for this month';
+	END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_ft_payment_date_trigger
+BEFORE INSERT ON FullTimeSalary
+FOR EACH ROW EXECUTE FUNCTION check_ft_salary_payment();
+
+CREATE OR REPLACE FUNCTION check_pt_salary_payment()
+RETURNS TRIGGER AS $$
+DECLARE
+    _pt_payment_date DATE;
+    _last_day_of_month DATE;
+    _number_of_payment_dates INTEGER;
+BEGIN
+    SELECT payment_date INTO _pt_payment_date FROM PartTimeSalary;
+    SELECT end_of_month(_pt_payment_date) INTO _last_day_of_month;
+    SELECT COUNT(DISTINCT payment_date) INTO _number_of_payment_dates FROM PartTimeSalary 
+        WHERE DATE_PART('month', payment_date) = DATE_PART('month', _last_day_of_month) 
+        AND DATE_PART('year', payment_date) = DATE_PART('year', _last_day_of_month);
+    IF (_pt_payment_date <> _last_day_of_month) THEN
+        RAISE EXCEPTION 'Payment date is not at end of the month';
+    END IF;
+	IF (_number_of_payment_dates > 1) THEN
+        RAISE EXCEPTION 'Salaries are paid more than once for this month';
+	END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_pt_payment_date_trigger
+BEFORE INSERT ON PartTimeSalary
+FOR EACH ROW EXECUTE FUNCTION check_pt_salary_payment();
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- CHUN YONG'S FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -105,29 +183,8 @@ $$ LANGUAGE sql;
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- XINYEE's FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 -- MICH's FUNCTIONS
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- F6, F7, F15, F16, F21, F22
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- F6
--- CREATE OR REPLACE FUNCTION find_instructors (IN cid INTEGER, IN session_date DATE, IN session_hour INTEGER)
--- RETURNS TABLE (eid INTEGER, e_name TEXT) AS $$
---     SELECT emp_id, emp_name
---     FROM Employees
---     NATURAL JOIN Specializations
---     INNER JOIN Courses
---     ON Specializations.course_area = Courses.course_area
---     WHERE Courses.course_id = cid
---     AND (depart_date IS NULL OR (depart_date IS NOT NULL AND depart_date >= session_date))
---     AND session_hour = ANY(get_avail_hours(emp_id, session_date))
---     AND (
---         (get_emp_status(emp_id) = 'Part Time' AND get_monthly_hours(emp_id, DATE_PART('month', session_date), DATE_PART('year', session_date)) <= 29) 
---         OR get_emp_status(emp_id) = 'Full Time'
---     )
---     ORDER BY emp_id;
--- $$ LANGUAGE sql;
-
 CREATE OR REPLACE FUNCTION find_instructors (IN cid INTEGER, IN session_date DATE, IN session_hour INTEGER)
 RETURNS TABLE (eid INTEGER, e_name TEXT) AS $$
     SELECT emp_id, emp_name
@@ -145,28 +202,7 @@ RETURNS TABLE (eid INTEGER, e_name TEXT) AS $$
     AND extract(dow from session_date) in (1, 2, 3, 4, 5)
     ORDER BY emp_id;
 $$ LANGUAGE sql;
-
 -- F7
--- CREATE OR REPLACE FUNCTION get_available_instructors (
--- IN cid INTEGER, IN s_date DATE, IN e_date DATE)
--- RETURNS TABLE(emp_id INTEGER, emp_name TEXT, current_monthly_hours DOUBLE PRECISION, day DATE, avail_hours INTEGER[]) AS $$
--- SELECT DISTINCT emp_id, emp_name, get_monthly_hours(emp_id, DATE_PART('month', CURRENT_DATE), DATE_PART('year', CURRENT_DATE)), sess_date, get_avail_hours(emp_id, sess_date)
--- FROM Employees
--- NATURAL JOIN Specializations
--- INNER JOIN Courses
--- ON Specializations.course_area = Courses.course_area
--- INNER JOIN CourseOfferings
--- ON Courses.course_id = CourseOfferings.course_id
--- INNER JOIN Sessions
--- ON CourseOfferings.offering_id = Sessions.offering_id
--- WHERE Courses.course_id = cid
--- AND sess_date BETWEEN s_date AND e_date
--- AND (
---         (get_emp_status(emp_id) = 'Part Time' AND get_monthly_hours(emp_id, DATE_PART('month', sess_date), DATE_PART('year', sess_date)) <= 29) 
---         OR get_emp_status(emp_id) = 'Full Time'
--- );
--- $$ LANGUAGE sql;
-
 CREATE OR REPLACE FUNCTION get_available_instructors (
 IN cid INTEGER, IN s_date DATE, IN e_date DATE)
 RETURNS TABLE(emp_id INTEGER, emp_name TEXT, current_monthly_hours DOUBLE PRECISION, day DATE, avail_hours INTEGER[]) AS $$
@@ -191,7 +227,6 @@ AND (
 )
 ORDER BY (emp_id, day) ASC;
 $$ LANGUAGE sql;
-
 -- F15
 CREATE OR REPLACE FUNCTION get_available_course_offerings ()
 RETURNS TABLE(c_title TEXT, c_area TEXT, s_date DATE, e_date DATE, r_deadline DATE, c_fee NUMERIC(10,2), num_remaining INTEGER) AS $$
@@ -211,7 +246,6 @@ RETURNS TABLE(c_title TEXT, c_area TEXT, s_date DATE, e_date DATE, r_deadline DA
     AND remaining > 0
     ORDER BY (registration_deadline, title) ASC;
 $$ LANGUAGE sql;
-
 -- F16
 CREATE OR REPLACE FUNCTION get_available_course_sessions (IN oid INTEGER)
 RETURNS TABLE(session_date DATE, session_hour INTEGER, inst_name TEXT, seat_remaining INTEGER) AS $$
@@ -249,9 +283,7 @@ RETURNS TABLE(session_date DATE, session_hour INTEGER, inst_name TEXT, seat_rema
     AND CourseOfferings.offering_id = oid
     ORDER BY (sess_date, DATE_PART('hour', start_time)) ASC;
 $$ LANGUAGE sql;
-
 -- F21
-
 CREATE OR REPLACE PROCEDURE update_instructor (oid INTEGER, s_num INTEGER, eid INTEGER) AS $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM Sessions WHERE offering_id = oid) THEN
@@ -261,33 +293,13 @@ BEGIN
     ELSIF NOT EXISTS (SELECT 1 FROM Instructors WHERE emp_id = eid) THEN
         RAISE EXCEPTION 'The instructor does not exist';
     END IF;
-
     UPDATE Sessions
     SET instructor_id = eid
     WHERE offering_id = oid 
     AND sess_num = s_num;
-
 END;
 $$ LANGUAGE plpgsql;
 -- F22
--- CREATE OR REPLACE PROCEDURE update_room (
---     oid INTEGER, s_num INTEGER, rid INTEGER
--- )
--- AS $$
---     WITH RegistrationCount AS (
---         SELECT sess_id AS session_id, COUNT(sess_id) AS count
--- 		FROM SessionParticipants
--- 		GROUP BY sess_id
--- 		ORDER BY sess_id
---     )
---     UPDATE Sessions
---     SET room_id = rid
---     From CourseOfferings
---     WHERE Sessions.offering_id = oid
---     AND sess_num = s_num
---     AND sess_date > CURRENT_DATE
---     AND ((SELECT count FROM RegistrationCount WHERE session_id = sess_id) <= (SELECT seating_capacity FROM Rooms WHERE room_id = rid));
-
 CREATE OR REPLACE PROCEDURE update_room (oid INTEGER, s_num INTEGER, rid INTEGER) AS $$
 DECLARE
     _sess_id INTEGER;
@@ -343,3 +355,4 @@ BEGIN
 
 END;
 $$ LANGUAGE plpgsql;
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
