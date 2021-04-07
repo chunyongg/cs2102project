@@ -32,7 +32,6 @@ end;
 $$ language plpgsql;
 
 --F19 DONE
--- session id not changing for second example
 CREATE OR REPLACE PROCEDURE update_course_session(IN cid integer, IN oid integer, IN _sess_num integer)
 AS $$
 declare
@@ -52,10 +51,10 @@ begin
         WHERE offering_id = oid
         AND sess_num = _sess_num;
 
-    IF (new_sid is null) then
-        raise exception 'Session does not exist.';
-    ELSIF (not exists (select C.cust_id from Customers C where C.cust_id = cid)) then
+    IF (not exists (select C.cust_id from Customers C where C.cust_id = cid)) then
         raise exception 'Customer does not exist in the system, purchase failed.';
+    ELSIF (new_sid is null) then
+        raise exception 'Session does not exist.';
     ELSIF (not exists(select SP.cust_id from SessionParticipants SP where SP.cust_id = cid)) then
         raise exception 'Customer did not register for any sessions, updating of session failed.';
     ELSIF (not exists (select SPS.sess_id FROM (SessionParticipants natural join Sessions)SPS
@@ -95,66 +94,67 @@ declare
     package_credit integer;
 begin
     cancel_date := current_date;
-    if not exists(select SP.cust_id from SessionParticipants SP where SP.cust_id = cid) then
-        raise exception 'Customer did not register for any sessions, cancellation process failed.';
-    elsif not exists(select CO.offering_id from CourseOfferings CO where CO.offering_id = oid) then
-        raise exception 'Offering does not exist in the system, please check again.';
-    else
-        _sess_id := (select SPS.sess_id
+    _sess_id := (select SPS.sess_id
             from (SessionParticipants natural join Sessions)SPS
             where SPS.offering_id = oid
             and SPS.cust_id = cid);
-        if (_sess_id) is null then
-            raise exception 'Customer did not register for any sessions in the offering, please check again.';
-        elsif ((select S.start_time from Sessions S where S.sess_id = _sess_id) <= localtimestamp) then
-            raise exception 'Session has started, cancellation of registration is not allowed.';
-        else
-            if (checkRegisterSession(cid, _sess_id)) then
-                package_credit := 0;
-                price := (select CO.fees from CourseOfferings CO where CO.offering_id = oid);
-                _sess_date := (select S.sess_date
-                    from Sessions S
-                    where S.sess_id = _sess_id
-                    and S.offering_id = oid);
-                _latest_date := (select S.latest_cancel_date
-                    from Sessions S
-                    where S.sess_id = _sess_id
-                    and S.offering_id = oid);
-                if (select (cancel_date <= _latest_date)) then
-                    refund_amt := price * 9/10;
-                else
-                    refund_amt := 0;
-                end if;
-                DELETE from Registers
+
+    IF not exists (select C.cust_id from Customers C where C.cust_id = cid) then
+        raise exception 'Customer does not exist in the system, purchase failed.';
+    ELSIF not exists(select CO.offering_id from CourseOfferings CO where CO.offering_id = oid) then
+        raise exception 'Offering does not exist in the system, please check again.';
+    ELSIF not exists(select SP.cust_id from SessionParticipants SP where SP.cust_id = cid) then
+        raise exception 'Customer did not register for any sessions, cancellation process failed.';
+    ELSIF (_sess_id) is null then
+        raise exception 'Customer did not register for any sessions in the offering, please check again.';
+    ELSIF ((select S.start_time from Sessions S where S.sess_id = _sess_id) <= localtimestamp) then
+        raise exception 'Session has started, cancellation of registration is not allowed.';
+    ELSE
+        if (checkRegisterSession(cid, _sess_id)) then
+            package_credit := 0;
+            price := (select CO.fees from CourseOfferings CO where CO.offering_id = oid);
+            _sess_date := (select S.sess_date
+                from Sessions S
+                where S.sess_id = _sess_id
+                and S.offering_id = oid);
+            _latest_date := (select S.latest_cancel_date
+                from Sessions S
+                where S.sess_id = _sess_id
+                and S.offering_id = oid);
+            if (select (cancel_date <= _latest_date)) then
+                refund_amt := price * 9/10;
+            else
+                refund_amt := 0;
+            end if;
+            DELETE from Registers
+            WHERE cust_id = cid
+            and sess_id = _sess_id;
+            INSERT INTO Cancels
+            VALUES (cancel_date, refund_amt, package_credit, cid, _sess_id);
+        elsif (checkRedeemSession(cid, _sess_id)) then
+            refund_amt := 0;
+            _latest_date := (select S.latest_cancel_date
+                from Sessions S
+                where S.sess_id = _sess_id
+                and S.offering_id = oid);
+            pid := (select SP.package_id
+                from SessionParticipants SP
+                where SP.cust_id = cid
+                and SP.sess_id = _sess_id);
+                DELETE from Redeems
                 WHERE cust_id = cid
                 and sess_id = _sess_id;
-                INSERT INTO Cancels
-                VALUES (cancel_date, refund_amt, package_credit, cid, _sess_id);
-            elsif (checkRedeemSession(cid, _sess_id)) then
-                refund_amt := 0;
-                _latest_date := (select S.latest_cancel_date
-                    from Sessions S
-                    where S.sess_id = _sess_id
-                    and S.offering_id = oid);
-                pid := (select SP.package_id
-                    from SessionParticipants SP
-                    where SP.cust_id = cid
-                    and SP.sess_id = _sess_id);
-                    DELETE from Redeems
-                    WHERE cust_id = cid
-                    and sess_id = _sess_id;
-                if (select (cancel_date <= _latest_date)) then
-                    package_credit := 1;
-                    UPDATE Buys
-                    SET redemptions_left =  redemptions_left + 1
-                    WHERE cust_id = cid
-                    and package_id = pid;
-                else
-                    package_credit := 0;
-                end if;
-                INSERT INTO Cancels
-                    VALUES (cancel_date, refund_amt, package_credit, cid, _sess_id);
+            if (select (cancel_date <= _latest_date)) then
+                package_credit := 1;
+                UPDATE Buys
+                SET redemptions_left =  redemptions_left + 1
+                WHERE cust_id = cid
+                and package_id = pid;
+            else
+                package_credit := 0;
             end if;
+            INSERT INTO Cancels
+                VALUES (cancel_date, refund_amt, package_credit, cid, _sess_id);
         end if;
     end if;
 end;
