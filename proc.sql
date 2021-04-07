@@ -146,9 +146,16 @@
 	WHERE sess_id <> NEW.sess_id AND room_id = NEW.room_id
     -- There exists another session that starts between the start and end times of the session to be added 
     AND (
-		(start_time >= NEW.start_time AND start_time < NEW.end_time)
-    -- There exists another session that starts before the session to be added, but ends after the start time of the session to be added
-		OR (start_time <= NEW.start_time AND end_time > start_time)
+			(
+			NEW.start_time >= start_time
+			AND NEW.start_time < end_time
+			) 
+		OR 
+		-- Start before another session, but end after that session starts
+			(
+			NEW.start_time < start_time 
+			AND NEW.end_time > start_time 
+			)
 	) 
 	limit 1;
 	
