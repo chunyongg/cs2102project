@@ -27,8 +27,8 @@ create table FullTimeSalary(
 );
 
 Create table PartTimeHoursWorked (
-	hours_worked integer DEFAULT 0,
-	month_year timestamp,
+	hours_worked integer DEFAULT 0 check (hours_worked >= 0),
+	month_year date check (date_part('day', month_year) = 1),
 	emp_id integer references PartTimeEmployees,
 	primary key (month_year, emp_id)
 );
