@@ -111,13 +111,13 @@
 		RAISE EXCEPTION 'Instructor does not specialize in area taught';
 	END IF;
 
-    -- SELECT session_hours INTO unavailable_hours FROM get_total_session_hours(NEW.instructor_id, NEW.sess_date);
-	-- FOR unavailable_hour IN 
-	-- LOOP
-	-- 	IF (unavailable_hour BETWEEN extract(hour FROM NEW.start_time) AND extract(hour FROM NEW.end_time)) THEN
-	-- 		RAISE EXCEPTION 'Give the poor instructor a break!';
-	-- 	END IF;
-	-- END LOOP;
+    unavailable_hours := get_total_session_hours(NEW.instructor_id, NEW.sess_date);
+	FOREACH unavailable_hour IN ARRAY unavailable_hours
+	LOOP
+		IF (unavailable_hour BETWEEN extract(hour FROM NEW.start_time) AND extract(hour FROM NEW.end_time)) THEN
+			RAISE EXCEPTION 'Give the poor instructor a break!';
+		END IF;
+	END LOOP;
 
 	SELECT sess_id INTO other_session_id FROM Sessions WHERE
 	sess_id <> NEW.sess_id AND instructor_id = NEW.instructor_id
