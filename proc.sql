@@ -81,13 +81,24 @@
 	CREATE TRIGGER AFTER_SESSION_DELETE 
 	AFTER DELETE ON SESSIONS 
 	FOR EACH ROW EXECUTE FUNCTION AFTER_SESSION_DELETE();
+	
+
+	-- Get an array of hours where the instructor is unavailable to teach, including breaks.
+	CREATE OR REPLACE FUNCTION get_instructor_unavailable_hours(eid integer, day date)
+	RETURNS INT[] AS $$
+	SELECT ARRAY(
+		SELECT * 
+		FROM generate_series(DATE_PART('hour', start_time)::INTEGER - 1, DATE_PART('hour', end_time)::INTEGER + 1))
+	FROM Sessions
+	WHERE sess_date = day
+	AND instructor_id = eid
+	$$ LANGUAGE SQL;
 
 	CREATE OR REPLACE FUNCTION CHECK_SESSION_ADD() RETURNS TRIGGER AS $$
 	DECLARE
 	carea text;
 	cid integer;
 	curr_time timestamp;
-	registration_deadline date;
 	other_session_id integer;
 	same_room_session_id integer;
 	_duration integer;
@@ -96,42 +107,53 @@
 	j_date date;
 	unavailable_hour integer;
     unavailable_hours int[];
+	registration_deadline date;
 	BEGIN
 
 	SELECT LOCALTIMESTAMP into curr_time;
+
 	IF (NEW.start_time <= LOCALTIMESTAMP) THEN
 		RAISE EXCEPTION 'Session must start in the future';
 	END IF;
 
-	SELECT course_id into cid from CourseOfferings where offering_id = NEW.offering_id;
-	SELECT duration, course_area into _duration, carea from Courses where course_id = cid;
+	SELECT CO.registration_deadline INTO registration_deadline FROM CourseOfferings CO WHERE CO.offering_id = NEW.offering_id;
 
-
-	IF (NOT EXISTS (SELECT 1 FROM Specializations WHERE emp_id = NEW.instructor_id AND course_area = carea)) THEN
-		RAISE EXCEPTION 'Instructor does not specialize in area taught';
+	IF registration_deadline < CURRENT_DATE THEN 
+		RAISE EXCEPTION 'Registration deadline for course offering % has passed.', NEW.offering_id;
 	END IF;
 
-    unavailable_hours := get_total_session_hours(NEW.instructor_id, NEW.sess_date);
-	FOREACH unavailable_hour IN ARRAY unavailable_hours
-	LOOP
-		IF (unavailable_hour BETWEEN extract(hour FROM NEW.start_time) AND extract(hour FROM NEW.end_time)) THEN
-			RAISE EXCEPTION 'Give the poor instructor a break!';
-		END IF;
-	END LOOP;
+	IF date_part('hour', NEW.start_time) < 9 THEN 
+		RAISE EXCEPTION 'Invalid start time: %', NEW.start_time;
+	END IF;
 
-	SELECT sess_id INTO other_session_id FROM Sessions WHERE
-	sess_id <> NEW.sess_id AND instructor_id = NEW.instructor_id
-	AND sess_date = NEW.sess_date AND start_time >= NEW.start_time
-	AND end_time <= NEW.end_time
+	IF date_part('dow', NEW.sess_date) IN (0, 6) THEN 
+		RAISE EXCEPTION 'Cannot start on weekends';
+	END IF;
+
+	IF date_part('hour', NEW.end_time) > 18 THEN 
+		RAISE EXCEPTION 'Invalid end time: %', NEW.end_time;
+	END IF;
+
+	IF date_part('hour', NEW.start_time) BETWEEN 12 AND 13 THEN 
+		RAISE EXCEPTION 'Invalid start time: %', NEW.start_time;
+	END IF;
+
+	IF date_part('hour', NEW.end_time) BETWEEN 13 AND 14 THEN 
+		RAISE EXCEPTION 'Invalid end time: %', NEW.end_time;
+	END IF;
+
+	SELECT sess_id into same_room_session_id FROM Sessions
+	WHERE sess_id <> NEW.sess_id AND room_id = NEW.room_id
+    -- There exists another session that starts between the start and end times of the session to be added 
+    AND (
+		(start_time >= NEW.start_time AND start_time < NEW.end_time)
+    -- There exists another session that starts before the session to be added, but ends after the start time of the session to be added
+		OR (start_time <= NEW.start_time AND end_time > start_time)
+	) 
 	limit 1;
-	IF (other_session_id IS NOT NULL) THEN
-		RAISE EXCEPTION 'Instructor is already teaching at this time';
-	END IF;
-
-	SELECT get_monthly_hours(NEW.instructor_id, DATE_PART('month', NEW.sess_date), DATE_PART('year', NEW.sess_date)) INTO hours_taught;
-
-	IF (hours_taught + _duration > 30 AND EXISTS (SELECT 1 FROM PartTimeEmployees WHERE emp_id = NEW.instructor_id)) THEN
-		RAISE EXCEPTION 'Part time instructor must not teach more than 30 hours in a month';
+	
+	IF same_room_session_id IS NOT NULL THEN
+		RAISE EXCEPTION 'Room is occupied at this time';
 	END IF;
 
 	SELECT depart_date, join_date INTO d_date, j_date FROM Employees WHERE emp_id = NEW.instructor_id;
@@ -144,15 +166,50 @@
 		RAISE EXCEPTION 'Instructor has not joined yet';
 	END IF;
 
-	SELECT sess_id into same_room_session_id FROM Sessions
-	WHERE sess_id <> NEW.sess_id AND room_id = NEW.room_id
-    -- There exists another session that starts between the start and end times of the session to be added 
-    AND (start_time >= NEW.start_time AND start_time < NEW.end_time)
-    -- There exists another session that starts before the session to be added, but ends after the start time of the session to be added
-	OR (start_time <= NEW.start_time AND end_time > start_time) 
+	SELECT course_id into cid from CourseOfferings where offering_id = NEW.offering_id;
+	SELECT duration, course_area into _duration, carea from Courses where course_id = cid;
+
+	IF (NOT EXISTS (SELECT 1 FROM Specializations WHERE emp_id = NEW.instructor_id AND course_area = carea)) THEN
+		RAISE EXCEPTION 'Instructor does not specialize in area taught';
+	END IF;
+
+	SELECT sess_id INTO other_session_id FROM Sessions WHERE
+	sess_id <> NEW.sess_id AND instructor_id = NEW.instructor_id
+	AND sess_date = NEW.sess_date AND 
+	(( -- Start after another session, but start before that session ends
+		NEW.start_time >= start_time
+		AND NEW.start_time < end_time
+		) OR 
+		-- Start before another session, but end after that session starts
+		(
+			NEW.start_time < start_time 
+			AND NEW.end_time > start_time 
+		)
+	)
 	limit 1;
-	if (same_room_session_id IS NOT NULL) THEN
-		RAISE EXCEPTION 'Room is occupied at this time';
+	IF (other_session_id IS NOT NULL) THEN
+		RAISE EXCEPTION 'Instructor is already teaching at this time';
+	END IF;
+
+	unavailable_hours:= get_instructor_unavailable_hours(NEW.instructor_id, NEW.sess_date);
+
+	IF unavailable_hours IS NOT NULL THEN 
+		FOREACH unavailable_hour IN ARRAY unavailable_hours
+		LOOP
+			IF (unavailable_hour = extract(hour FROM NEW.start_time) -- Cannot start during resting period
+				OR 
+				-- Start before resting period but end after resting period
+				(extract(hour FROM NEW.start_time) < unavailable_hour AND extract(hour FROM NEW.end_time) > unavailable_hour)  
+			) THEN
+				RAISE EXCEPTION 'Give the poor instructor a break!';
+			END IF;
+		END LOOP;
+	END IF;
+
+	SELECT get_monthly_hours(NEW.instructor_id, DATE_PART('month', NEW.sess_date), DATE_PART('year', NEW.sess_date)) INTO hours_taught;
+
+	IF (hours_taught + _duration > 30 AND EXISTS (SELECT 1 FROM PartTimeEmployees WHERE emp_id = NEW.instructor_id)) THEN
+		RAISE EXCEPTION 'Part time instructor must not teach more than 30 hours in a month';
 	END IF;
 
 	RETURN NEW;
@@ -160,12 +217,17 @@
 	$$ LANGUAGE PLPGSQL;
 
 	-- Rejects insertion if: 
+	-- Registration deadline for course offering is over
 	-- Instructor does not specialize in area, 
 	-- is teaching consecutive sessions, 
 	-- (for part time) is teaching more than 30 hours,
-	-- is teaching two sessions simultaneously, room is occupied
+	-- is teaching two sessions simultaneously
+	-- Instructor does not get a break
+	-- Room is occupied
 	-- Instructor departed
 	-- Instructor haven't joined
+	-- Is on weekends 
+	-- Is after/before operating hours
 	DROP TRIGGER IF EXISTS BEFORE_SESSION_ADD ON SESSIONS;
 	CREATE TRIGGER BEFORE_SESSION_ADD
 	BEFORE
