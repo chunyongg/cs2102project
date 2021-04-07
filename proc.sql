@@ -4,7 +4,7 @@
 
 -- Ensure CourseOffering seating capacity is valid
 -- Update is omitted from this trigger since removal of session can be permitted even if seating capacity drops below target number (F23 remove_session)
-DROP TRIGGER IF EXISTS before_offering_insert_or_update ON CourseOfferings;
+DROP TRIGGER IF EXISTS check_seating_capacity ON CourseOfferings;
 CREATE TRIGGER check_seating_capacity
 BEFORE INSERT ON CourseOfferings
 FOR EACH ROW EXECUTE FUNCTION check_courseofferings_seating_capacity();
@@ -75,7 +75,7 @@ END;
 
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE PROCEDURE create_sessions(course_id integer, launch_date date, duration integer, session_items SessionInfo []) AS $$ 
+CREATE OR REPLACE PROCEDURE create_sessions(course_id integer, offering_id integer, launch_date date, duration integer, session_items SessionInfo []) AS $$ 
 DECLARE 
 item SessionInfo;
 instructor_id integer;
@@ -87,7 +87,7 @@ session_number := 1;
 -- Use find_instructors (Q6) to get available Instructors
 -- If no instructors, raise exception
 FOREACH item IN ARRAY session_items LOOP
-    SELECT eid into instructor_id FROM find_instructors(course_id, (item).session_date, (item).session_start) LIMIT 1;
+    SELECT eid into instructor_id FROM find_instructors(course_id, (item).session_date, date_part('hour', (item).session_start) :: INT) LIMIT 1;
     if (instructor_id is NULL) THEN 
         RAISE EXCEPTION 'No instructors available to conduct session';
     END IF;
@@ -100,8 +100,7 @@ FOREACH item IN ARRAY session_items LOOP
                                  (item).session_date, 
                                  latest_cancellation, 
                                  instructor_id, 
-                                 course_id, 
-                                 launch_date, 
+                                 offering_id, 
                                  (item).room_id);
     session_number := session_number + 1;
 END LOOP;
@@ -113,6 +112,76 @@ END $$ LANGUAGE PLPGSQL;
 -- Aborts if there are no sessions, session dates are in the past, seating capacity is less than target number, or no instructors
 -- are available for one or more sessions.
 -- Session end time is determined by start time and duration of course 
+
+CREATE OR REPLACE FUNCTION getSeatingCapacity(_session_items SessionInfo []) 
+RETURNS INTEGER AS $$ 
+DECLARE 
+item SessionInfo;
+room_capacity integer;
+capacity integer;
+BEGIN
+capacity := 0;
+FOREACH item IN ARRAY _session_items LOOP
+SELECT
+    seating_capacity into room_capacity
+from
+    ROOMS
+where
+    room_id = (item).room_id;
+
+capacity := capacity + room_capacity;
+END LOOP;
+RETURN capacity;
+END;
+$$ LANGUAGE PLPGSQL;
+
+CREATE OR REPLACE FUNCTION getStartDate(session_items SessionInfo []) 
+RETURNS DATE AS $$ 
+DECLARE 
+curr_date date;
+temp_date date;
+item SessionInfo;
+
+BEGIN
+FOREACH item IN ARRAY session_items LOOP
+    curr_date = (item).session_date;
+    IF (temp_date IS NULL or curr_date < temp_date) THEN 
+        temp_date := curr_date;
+    END IF; 
+END LOOP;
+RETURN temp_date;
+END;
+$$ LANGUAGE PLPGSQL;
+
+CREATE OR REPLACE FUNCTION getCourseDuration(cid integer) 
+RETURNS INTEGER AS $$ 
+DECLARE
+course_duration integer;
+BEGIN 
+SELECT duration into course_duration FROM Courses where course_id = cid;
+RETURN course_duration;
+END;
+$$ LANGUAGE PLPGSQL;
+
+CREATE OR REPLACE FUNCTION getEndDate(session_items SessionInfo []) 
+RETURNS DATE AS $$
+DECLARE 
+curr_date date;
+temp_date date;
+item SessionInfo;
+
+BEGIN
+FOREACH item IN ARRAY session_items LOOP
+    curr_date = (item).session_date;
+    IF (temp_date IS NULL or curr_date > temp_date) THEN 
+        temp_date := curr_date;
+    END IF; 
+END LOOP;
+RETURN temp_date;
+END;
+$$ LANGUAGE PLPGSQL;
+
+
 CREATE OR REPLACE PROCEDURE add_course_offering(
     offering_id integer,
     course_id integer,
@@ -161,7 +230,7 @@ CALL add_offering(
     admin_id
 );
 
-CALL create_sessions(course_id, launch_date, duration, session_items);
+CALL create_sessions(course_id, offering_id, launch_date, duration, session_items);
 
 COMMIT;
 
