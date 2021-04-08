@@ -1564,7 +1564,6 @@ CALL add_offering(
 
 CALL create_sessions(course_id, offering_id, launch_date, duration, session_items);
 
-COMMIT;
 
 END;
 
