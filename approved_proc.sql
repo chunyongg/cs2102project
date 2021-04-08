@@ -333,10 +333,10 @@ BEGIN
     SELECT join_date, depart_date INTO j_date, d_date FROM Employees 
     WHERE emp_id = NEW.manager_id;
         IF d_date < CURRENT_DATE THEN 
-        RAISE EXCEPTION 'Employee departed';
+        RAISE EXCEPTION 'Manager departed';
     END IF;
     IF j_date > CURRENT_DATE THEN 
-        RAISE EXCEPTION 'Employee not yet joined';
+        RAISE EXCEPTION 'Manager not yet joined';
     END IF;
     RETURN NEW;
 END;
@@ -356,10 +356,10 @@ BEGIN
     SELECT join_date, depart_date INTO j_date, d_date FROM Employees 
     WHERE emp_id = NEW.admin_id;
         IF d_date < CURRENT_DATE THEN 
-        RAISE EXCEPTION 'Employee departed';
+        RAISE EXCEPTION 'Administrator departed';
     END IF;
     IF j_date > CURRENT_DATE THEN 
-        RAISE EXCEPTION 'Employee not yet joined';
+        RAISE EXCEPTION 'Administrator not yet joined';
     END IF;
     RETURN NEW;
 END;
@@ -522,9 +522,11 @@ RETURNS TRIGGER AS $$
 DECLARE 
 l_date date;
 r_deadline date;
+oid integer;
 BEGIN 
+    SELECT offering_id INTO oid FROM Sessions WHERE sess_id = NEW.sess_id;
     SELECT launch_date, registration_deadline INTO l_date, r_deadline FROM CourseOfferings 
-    WHERE offering_id = NEW.offering_id;
+    WHERE offering_id = oid;
     IF l_date < CURRENT_DATE THEN 
         RAISE EXCEPTION 'Course offering not launched yet';
     END IF;
@@ -1256,6 +1258,7 @@ RETURNS TABLE (eid INTEGER, e_name TEXT) AS $$
     ON Specializations.course_area = Courses.course_area
     WHERE Courses.course_id = cid
     AND (depart_date IS NULL OR (depart_date IS NOT NULL AND depart_date >= session_date))
+    AND (join_date <= session_date)
     AND (ARRAY(SELECT generate_series(session_hour, session_hour + duration - 1))) <@ get_avail_hours(emp_id, session_date)
     AND (
         (get_emp_status(emp_id) = 'Part Time' AND get_monthly_hours(emp_id, DATE_PART('month', session_date), DATE_PART('year', session_date)) <= 29) 
@@ -2075,11 +2078,11 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 
-CREATE OR REPLACE FUNCTION find_hours_worked(d date, emp_id integer)
+CREATE OR REPLACE FUNCTION find_hours_worked(d date, eid integer)
 RETURNS INTEGER AS $$
 SELECT PHRS.hours_worked FROM PartTimeHoursWorked PHRS
-WHERE PHRS.emp_id = emp_id 
-AND PHRS.month_year = date_trunc('month', d)
+WHERE PHRS.emp_id = eid 
+AND PHRS.month_year = date_trunc('month', d);
 $$ LANGUAGE SQL;
 
 
@@ -2151,6 +2154,7 @@ BEGIN
         name := r.emp_name;
         status := 'Part Time';
         worked_hours := coalesce(find_hours_worked(current_date, emp_id), 0);
+        RAISE NOTICE '%: %', emp_id, worked_hours;
         hour_rate := r.hourly_rate;
         salary_earned := worked_hours * hour_rate;
         INSERT INTO PartTimeSalary VALUES(salary_earned, month_end, worked_hours, emp_id);

@@ -1,3 +1,5 @@
+-- OUTDATED, LATEST IN APPROVED_PROC
+
 ---- F1
 
 DROP TYPE IF EXISTS emp_type cascade;

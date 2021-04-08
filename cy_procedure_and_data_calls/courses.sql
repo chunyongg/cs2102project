@@ -21,18 +21,8 @@ CALL add_course('Software Engineering', 'Learn about software engineering', 'Sof
 CALL add_course('Data Analytics', 'Learn about data analytics', 'Data Analytics', 3);
 CALL add_course('Programming Languages', 'Learn about programming', 'Programming Languages', 1);
 
-add_course_offering(
-    offering_id integer,
-    course_id integer,
-    fees numeric,
-    target_number integer,
-    launch_date date,
-    registration_deadline date,
-    admin_id integer,
-    session_items SessionInfo []
-)
-
 -- Algorithms
+
 CALL add_course_offering(1, 1 , 100, 10, '2021-04-08', 
 '2021-04-08', 1 , '{"(2021-04-19,\"2021-04-19 11:00:00\",1)"}' :: SessionInfo[]);
 -- AI
@@ -52,13 +42,13 @@ CALL add_course_offering(6, 6 , 100, 15, '2021-04-08',
 '2021-04-08', 6 , '{"(2021-04-21,\"2021-04-21 15:00:00\",6)"}' :: SessionInfo[]);
 -- Parallel Computing
 CALL add_course_offering(7, 7 , 100, 16, '2021-04-08', 
-'2021-04-08', 7 , '{"(2021-04-22,\"2021-04-22 17:00:00\",7)"}' :: SessionInfo[]);
+'2021-04-08', 6 , '{"(2021-04-22,\"2021-04-22 17:00:00\",7)"}' :: SessionInfo[]);
 -- Software Engineering
 CALL add_course_offering(8, 8 , 100, 17, '2021-04-08', 
 '2021-04-08', 8 , '{"(2021-04-23,\"2021-04-23 16:00:00\",8)"}' :: SessionInfo[]);
 -- Data Analytics
 CALL add_course_offering(9, 9 , 100, 18, '2021-04-08', 
-'2021-04-08', 9 , '{"(2021-04-26,\"2021-04-26 15:00:00\",9)"}' :: SessionInfo[]);
+'2021-04-08', 6 , '{"(2021-04-26,\"2021-04-26 15:00:00\",9)"}' :: SessionInfo[]);
 -- Programming Languages
 CALL add_course_offering(10, 10 , 100, 19, '2021-04-08', 
 '2021-04-08', 10 , '{"(2021-04-19,\"2021-04-27 17:00:00\",10)"}' :: SessionInfo[]);
