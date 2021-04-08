@@ -98,7 +98,7 @@ FOR EACH ROW EXECUTE FUNCTION check_isNot_Existing();
 CREATE OR REPLACE FUNCTION reject_operation()
 RETURNS TRIGGER AS $$ 
 BEGIN 
-    RETURN OLD;
+    RAISE EXCEPTION 'Operation denied';
 END;
 $$ LANGUAGE PLPGSQL;
 
