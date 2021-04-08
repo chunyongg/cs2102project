@@ -676,9 +676,9 @@ BEGIN
         RAISE EXCEPTION 'Payment date is not at end of the month';
     END IF;
 	IF (_number_of_payment_dates > 1) THEN
-        RAISE EXCEPTION 'Salaries are paid more than once for this month';
+        RAISE EXCEPTION 'Full-time salaries are paid more than once for this month';
 	END IF;
-    RETURN NULL;
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -703,9 +703,9 @@ BEGIN
         RAISE EXCEPTION 'Payment date is not at end of the month';
     END IF;
 	IF (_number_of_payment_dates > 1) THEN
-        RAISE EXCEPTION 'Salaries are paid more than once for this month';
+        RAISE EXCEPTION 'Part-time salaries are paid more than once for this month';
 	END IF;
-    RETURN NULL;
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
