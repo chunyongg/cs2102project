@@ -106,7 +106,7 @@ create table Sessions (
 			from
 				start_time
 		) in (1, 2, 3, 4, 5)
-	),
+	),	
 	end_time timestamp not null check (
 		end_time > start_time
 		and date_part('hour', end_time) <= 18
@@ -192,13 +192,16 @@ create table Redeems (
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- VIEWS
-
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 CREATE OR REPLACE VIEW SessionParticipants AS
 	SELECT cust_id, sess_id, null as package_id
 	FROM Registers
 	UNION
 	SELECT cust_id, sess_id, package_id
 	FROM Redeems;
+
+CREATE OR REPLACE VIEW INSTRUCTORSPECIALIZATIONS AS
+SELECT * FROM SPECIALIZATIONS;
 
 CREATE OR REPLACE VIEW EmployeeTypes AS 
 	SELECT emp_id, 'administrator' as emp_type FROM Administrators
