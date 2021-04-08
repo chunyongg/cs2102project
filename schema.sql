@@ -79,7 +79,7 @@ create table Courses (
 
 create table CourseOfferings (
   offering_id integer primary key,
-  launch_date date not null check(launch_date <= start_date),
+  launch_date date not null check(launch_date <= registration_deadline),
   start_date date not null check (start_date <= end_date),
   end_date date not null,
   registration_deadline date not null check(registration_deadline <= start_date - 10),
@@ -203,6 +203,13 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 	UNION
 	SELECT cust_id, sess_id, package_id
 	FROM Redeems;
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- TRIGGER FUNCTIONS
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+CREATE OR REPLACE VIEW SessionsInOrder AS
+    select sess_id, sess_date, start_time
+    from Sessions
+    order by (sess_date, start_time) asc;
+
+CREATE OR REPLACE VIEW ManagerDetails AS
+    select emp_id, emp_name
+    from Managers natural left join Employees
+    order by emp_name asc;
