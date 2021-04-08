@@ -193,21 +193,12 @@ create table Cancels (
 );
 
 create table Redeems (
-<<<<<<< HEAD
 	redeem_date date not null,
 	sess_id integer references Sessions(sess_id),
 	package_id integer not null,
 	cust_id integer,
 	foreign key (package_id, cust_id) references Buys(package_id, cust_id),
 	primary key(cust_id, sess_id)
-);
-=======
-  redeem_date date not null,
-  sess_id integer references Sessions(sess_id),
-  package_id integer not null,
-  cust_id integer,
-  foreign key (package_id, cust_id) references Buys(package_id, cust_id),
-  primary key(cust_id, sess_id)
 );
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -219,16 +210,7 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 	UNION
 	SELECT cust_id, sess_id, package_id
 	FROM Redeems;
-<<<<<<< HEAD
-<<<<<<< HEAD
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-=======
--- TRIGGER FUNCTIONS
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-=======
+
 
 CREATE OR REPLACE VIEW INSTRUCTORSPECIALIZATIONS AS
 SELECT * FROM SPECIALIZATIONS;
@@ -262,5 +244,4 @@ CREATE OR REPLACE VIEW ManagerDetails AS
     select emp_id, emp_name
     from Managers natural left join Employees
     order by emp_name asc;
->>>>>>> main
->>>>>>> main
+
