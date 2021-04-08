@@ -179,6 +179,7 @@ create table Registers (
   primary key(cust_id, sess_id)
 );
 
+
 create table Cancels (
 	cancel_date date not null,
 	refund_amt numeric(10, 2) not null check (refund_amt >= 0),
@@ -192,6 +193,15 @@ create table Cancels (
 );
 
 create table Redeems (
+<<<<<<< HEAD
+	redeem_date date not null,
+	sess_id integer references Sessions(sess_id),
+	package_id integer not null,
+	cust_id integer,
+	foreign key (package_id, cust_id) references Buys(package_id, cust_id),
+	primary key(cust_id, sess_id)
+);
+=======
   redeem_date date not null,
   sess_id integer references Sessions(sess_id),
   package_id integer not null,
@@ -250,3 +260,4 @@ CREATE OR REPLACE VIEW ManagerDetails AS
     select emp_id, emp_name
     from Managers natural left join Employees
     order by emp_name asc;
+>>>>>>> main
