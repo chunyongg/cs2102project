@@ -24,3 +24,9 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- MICH's TESTS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--TRigger tests
+
+INSERT INTO INSTRUCTORS VALUES(37) -- Manager exists
+INSERT INTO PartTimeInstructors values('Database Systems', 25) -- Is full time
+INSERT INTO FULLTIMEEMPLOYEES VALUES(300, 27) -- Is part time
+INSERT INTO FULLTIMEEMPLOYEES VALUES(300, 27) -- Is full time
