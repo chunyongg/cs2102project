@@ -67,7 +67,7 @@ create table PartTimeInstructors(
 
 create table Courses (
 	course_id serial unique,
-	duration integer not null,
+	duration integer not null check (duration > 0),
 	title text unique not null,
 	description text,
 	course_area text references CourseAreas on delete cascade,
@@ -76,7 +76,7 @@ create table Courses (
 
 create table CourseOfferings (
 	offering_id integer primary key,
-	launch_date date not null check(launch_date <= start_date),
+	launch_date date not null check(launch_date <= registration_deadline),
 	start_date date not null check (start_date <= end_date),
 	end_date date not null,
 	registration_deadline date not null check(registration_deadline <= start_date - 10),
@@ -151,20 +151,22 @@ create table CoursePackages (
 );
 
 create table Buys (
-	buy_date date not null,
-	redemptions_left integer not null,
-	package_id integer references CoursePackages,
-	cust_id integer references Customers on delete cascade,
-	cc_number varchar(16) not null references CreditCards,
-	primary key(cust_id, package_id)
+  buy_date date not null,
+  redemptions_left integer not null,
+  package_id integer references CoursePackages,
+  cust_id integer,
+  cc_number varchar(16) not null,
+  foreign key (cust_id, cc_number) references CreditCards(cust_id, cc_number) on delete cascade,
+  primary key(cust_id, package_id)
 );
 
 create table Registers (
-	register_date date not null,
-	cust_id integer references Customers on delete cascade,
-	sess_id integer references Sessions(sess_id),
-	cc_number varchar(16) not null references CreditCards,
-	primary key(cust_id, sess_id)
+  register_date date not null,
+  cust_id integer,
+  sess_id integer references Sessions(sess_id),
+  cc_number varchar(16) not null,
+  foreign key (cust_id, cc_number) references CreditCards(cust_id, cc_number) on delete cascade,
+  primary key(cust_id, sess_id)
 );
 
 create table Cancels (
