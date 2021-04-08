@@ -210,6 +210,9 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 =======
 
+CREATE OR REPLACE VIEW INSTRUCTORSPECIALIZATIONS AS
+SELECT * FROM SPECIALIZATIONS;
+
 CREATE OR REPLACE VIEW EmployeeTypes AS 
 	SELECT emp_id, 'administrator' as emp_type FROM Administrators
 	UNION 
