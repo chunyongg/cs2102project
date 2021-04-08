@@ -2154,7 +2154,6 @@ BEGIN
         name := r.emp_name;
         status := 'Part Time';
         worked_hours := coalesce(find_hours_worked(current_date, emp_id), 0);
-        RAISE NOTICE '%: %', emp_id, worked_hours;
         hour_rate := r.hourly_rate;
         salary_earned := worked_hours * hour_rate;
         INSERT INTO PartTimeSalary VALUES(salary_earned, month_end, worked_hours, emp_id);
