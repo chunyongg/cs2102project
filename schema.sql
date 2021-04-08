@@ -197,4 +197,22 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 	UNION
 	SELECT cust_id, sess_id, package_id
 	FROM Redeems;
+
+CREATE OR REPLACE VIEW EmployeeTypes AS 
+	SELECT emp_id, 'administrator' as emp_type FROM Administrators
+	UNION 
+	SELECT emp_id, 'manager' as emp_type FROM Managers
+	UNION 
+	SELECT emp_id, 'instructor' as emp_type FROM Instructors;
+
+CREATE OR REPLACE VIEW EmployeeWorkingTypes AS 
+	SELECT emp_id, 'full time' as emp_type FROM FullTimeEmployees
+	UNION 
+	SELECT emp_id, 'part time' as emp_type FROM PartTimeEmployees;
+
+CREATE OR REPLACE VIEW InstructorWorkingTypes AS 
+	SELECT emp_id, 'full time' as emp_type FROM FullTimeInstructors
+	UNION 
+	SELECT emp_id, 'part time' as emp_type FROM PartTimeInstructors;
+
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
