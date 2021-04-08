@@ -1083,12 +1083,14 @@ IF (type = 'part_time' AND category ='instructor') THEN
     INSERT INTO PartTimeInstructors values(eid);
 END IF;
 
+IF category = 'instructor' THEN
     FOREACH temp_area IN ARRAY areas 
     LOOP 
         IF (NOT EXISTS (SELECT 1 FROM COURSEAREAS WHERE course_area = temp_area)) THEN
             RAISE EXCEPTION 'Course area does not exist';
         END IF;
     END LOOP;
+END IF;
 
 IF (category = 'administrator') THEN
     INSERT INTO Administrators values(eid);
