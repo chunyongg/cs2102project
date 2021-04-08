@@ -17,6 +17,9 @@ add_course(
     duration integer
 )
 
-CALL add_course('Algorithms', 'Learn all about algorithms!', 'Algorithms and Theory', 1)
-CALL add_course('Artificial Intelligence', 'Learn about AI', 'Artificial Intelligence', 2)
-CALL add_course()
+CALL add_course('Algorithms', 'Learn all about algorithms!', 'Algorithms and Theory', 1);
+CALL add_course('Artificial Intelligence', 'Learn about AI', 'Artificial Intelligence', 2);
+CALL add_course('Game Design', 'Design the best games', 'Game Design', 3);
+CALL add_course('Computer Security', 'Secure your computers', 'Computer Security', 1);
+CALL add_course('Database Systems', 'Learn about databases', 'Database Systems', 2);
+CALL add_course('Computer Networking')

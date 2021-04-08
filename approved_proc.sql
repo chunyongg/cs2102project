@@ -1109,7 +1109,6 @@ ELSE
         END LOOP;
 END IF;
 
-COMMIT;
 END;
 
 $$ LANGUAGE plpgsql;
