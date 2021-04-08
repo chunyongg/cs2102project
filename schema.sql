@@ -69,26 +69,26 @@ create table PartTimeInstructors(
 );
 
 create table Courses (
-  course_id serial unique,
-  duration integer not null check (duration > 0),
-  title text unique not null,
-  description text,
-  course_area text references CourseAreas on delete cascade,
-  primary key(course_id, course_area)
+	course_id serial unique,
+	duration integer not null check (duration > 0),
+	title text unique not null,
+	description text,
+	course_area text references CourseAreas on delete cascade,
+	primary key(course_id, course_area)
 );
 
 create table CourseOfferings (
-  offering_id integer primary key,
-  launch_date date not null check(launch_date <= start_date),
-  start_date date not null check (start_date <= end_date),
-  end_date date not null,
-  registration_deadline date not null check(registration_deadline <= start_date - 10),
-  target_number_registrations integer not null,
-  fees numeric(10, 2) not null,
-  seating_capacity integer not null,
-  admin_id integer not null references Administrators,
-  course_id integer references Courses(course_id) on delete cascade,
-  unique(course_id, launch_date)
+	offering_id integer primary key,
+	launch_date date not null check(launch_date <= registration_deadline),
+	start_date date not null check (start_date <= end_date),
+	end_date date not null,
+	registration_deadline date not null check(registration_deadline <= start_date - 10),
+	target_number_registrations integer not null,
+	fees numeric(10, 2) not null,
+	seating_capacity integer not null,
+	admin_id integer not null references Administrators,
+	course_id integer references Courses(course_id) on delete cascade,
+	unique(course_id, launch_date)
 );
 
 create table Rooms (
@@ -203,6 +203,28 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 	UNION
 	SELECT cust_id, sess_id, package_id
 	FROM Redeems;
+<<<<<<< HEAD
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- TRIGGER FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+=======
+
+CREATE OR REPLACE VIEW EmployeeTypes AS 
+	SELECT emp_id, 'administrator' as emp_type FROM Administrators
+	UNION 
+	SELECT emp_id, 'manager' as emp_type FROM Managers
+	UNION 
+	SELECT emp_id, 'instructor' as emp_type FROM Instructors;
+
+CREATE OR REPLACE VIEW EmployeeWorkingTypes AS 
+	SELECT emp_id, 'full time' as emp_type FROM FullTimeEmployees
+	UNION 
+	SELECT emp_id, 'part time' as emp_type FROM PartTimeEmployees;
+
+CREATE OR REPLACE VIEW InstructorWorkingTypes AS 
+	SELECT emp_id, 'full time' as emp_type FROM FullTimeInstructors
+	UNION 
+	SELECT emp_id, 'part time' as emp_type FROM PartTimeInstructors;
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+>>>>>>> main
