@@ -290,6 +290,8 @@ insert into Specializations values
 (40, 'Computer Networking'),
 (40, 'Software Engineering');
 
+
+
 delete from Courses;
 alter sequence Courses_course_id_seq restart with 1;
 insert into Courses values

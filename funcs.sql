@@ -75,7 +75,6 @@ IF (category = 'instructor') THEN
 END IF;
 
 IF (type = 'full_time' AND category ='instructor') THEN 
-
     INSERT INTO FullTimeInstructors values(eid);
 END IF;
 
@@ -108,10 +107,7 @@ ELSE
             INSERT INTO SPECIALIZATIONS VALUES(eid, temp_area);
         END LOOP;
 END IF;
-
-COMMIT;
 END;
-
 $$ LANGUAGE plpgsql;
 
 --- F2
