@@ -204,6 +204,7 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 	SELECT cust_id, sess_id, package_id
 	FROM Redeems;
 <<<<<<< HEAD
+<<<<<<< HEAD
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- TRIGGER FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -228,3 +229,15 @@ CREATE OR REPLACE VIEW InstructorWorkingTypes AS
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 >>>>>>> main
+=======
+
+CREATE OR REPLACE VIEW SessionsInOrder AS
+    select sess_id, sess_date, start_time
+    from Sessions
+    order by (sess_date, start_time) asc;
+
+CREATE OR REPLACE VIEW ManagerDetails AS
+    select emp_id, emp_name
+    from Managers natural left join Employees
+    order by emp_name asc;
+>>>>>>> 8ca4c79a121feb097051bb57ccbb6da86109c7a2
