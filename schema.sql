@@ -239,8 +239,7 @@ CREATE OR REPLACE VIEW InstructorWorkingTypes AS
 	SELECT emp_id, 'part time' as emp_type FROM PartTimeInstructors;
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
->>>>>>> main
-=======
+
 
 CREATE OR REPLACE VIEW SessionsInOrder AS
     select sess_id, sess_date, start_time
@@ -251,5 +250,3 @@ CREATE OR REPLACE VIEW ManagerDetails AS
     select emp_id, emp_name
     from Managers natural left join Employees
     order by emp_name asc;
->>>>>>> 8ca4c79a121feb097051bb57ccbb6da86109c7a2
->>>>>>> main
