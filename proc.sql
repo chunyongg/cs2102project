@@ -3,6 +3,49 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- TRIGGERS AND THEIR FUNCTIONS (put as a pair!)
 
+CREATE OR REPLACE FUNCTION check_manager_status()
+RETURNS TRIGGER AS $$
+DECLARE 
+    j_date date;
+    d_date date;
+BEGIN 
+    SELECT join_date, depart_date INTO j_date, d_date FROM Employees 
+    WHERE emp_id = NEW.manager_id;
+        IF d_date < CURRENT_DATE THEN 
+        RAISE EXCEPTION 'Employee departed';
+    END IF;
+    IF j_date < CURRENT_DATE THEN 
+        RAISE EXCEPTION 'Employee not yet joined';
+    END IF;
+END;
+$$ LANGUAGE PLPGSQL;
+
+DROP TRIGGER IF EXISTS check_manager_is_available ON CourseAreas;
+CREATE TRIGGER check_manager_is_available
+BEFORE INSERT OR UPDATE ON COURSEAREAS 
+FOR EACH ROW EXECUTE FUNCTION check_manager_status();
+
+CREATE OR REPLACE FUNCTION check_admin_status()
+RETURNS TRIGGER AS $$
+DECLARE 
+    j_date date;
+    d_date date;
+BEGIN 
+    SELECT join_date, depart_date INTO j_date, d_date FROM Employees 
+    WHERE emp_id = NEW.admin_id;
+        IF d_date < CURRENT_DATE THEN 
+        RAISE EXCEPTION 'Employee departed';
+    END IF;
+    IF j_date < CURRENT_DATE THEN 
+        RAISE EXCEPTION 'Employee not yet joined';
+    END IF;
+END;
+$$ LANGUAGE PLPGSQL;
+
+CREATE TRIGGER check_admin_status 
+BEFORE INSERT OR UPDATE ON COURSEOFFERINGS 
+FOR EACH ROW EXECUTE FUNCTION check_admin_status();
+
 CREATE OR REPLACE FUNCTION prevent_both_full_and_part_time_instructor()
 RETURNS TRIGGER AS $$ 
 DECLARE 
@@ -10,7 +53,7 @@ existing_emp_type text;
 BEGIN 
     SELECT emp_type into existing_emp_type FROM InstructorWorkingTypes WHERE emp_id = NEW.emp_id;
     IF existing_emp_type IS NOT NULL THEN 
-        RAISE EXCEPTION '% is already a % instructor', NEW.emp_id, existing_emp_type;
+        RAISE EXCEPTION 'Employee % is already a % instructor', NEW.emp_id, existing_emp_type;
     END IF;
     RETURN NEW;
 END;
@@ -18,12 +61,12 @@ $$ LANGUAGE PLPGSQL;
 
 DROP TRIGGER IF EXISTS prevent_full_time_instructor ON FullTimeInstructors;
 CREATE TRIGGER prevent_full_time_instructor
-BEFORE INSERT OR UPDATE ON FullTimeInstructors
+BEFORE INSERT ON FullTimeInstructors
 FOR EACH ROW EXECUTE FUNCTION prevent_both_full_and_part_time_instructor();
 
 DROP TRIGGER IF EXISTS prevent_part_time_instructor ON PartTimeInstructors;
 CREATE TRIGGER prevent_part_time_instructor
-BEFORE INSERT OR UPDATE ON PartTimeInstructors
+BEFORE INSERT ON PartTimeInstructors
 FOR EACH ROW EXECUTE FUNCTION prevent_both_full_and_part_time_instructor();
 
 CREATE OR REPLACE FUNCTION prevent_both_full_and_part_time()
@@ -33,7 +76,7 @@ existing_emp_type text;
 BEGIN 
     SELECT emp_type into existing_emp_type FROM EmployeeWorkingTypes WHERE emp_id = NEW.emp_id;
     IF existing_emp_type IS NOT NULL THEN 
-        RAISE EXCEPTION '% Is already a % employee', NEW.emp_id, existing_emp_type;
+        RAISE EXCEPTION 'Employee % Is already a % employee', NEW.emp_id, existing_emp_type;
     END IF;
     RETURN NEW;
 END;
@@ -41,12 +84,12 @@ $$ LANGUAGE PLPGSQL;
 
 DROP TRIGGER IF EXISTS prevent_full_time_insert_is_part_time ON FullTimeEmployees;
 CREATE TRIGGER prevent_full_time_insert_is_part_time
-BEFORE INSERT OR UPDATE ON FullTimeEmployees
+BEFORE INSERT ON FullTimeEmployees
 FOR EACH ROW EXECUTE FUNCTION prevent_both_full_and_part_time();
 
 DROP TRIGGER IF EXISTS prevent_part_time_insert_is_full_time ON PartTimeEmployees;
 CREATE TRIGGER prevent_part_time_insert_is_full_time 
-BEFORE INSERT OR UPDATE ON PartTimeEmployees
+BEFORE INSERT ON PartTimeEmployees
 FOR EACH ROW EXECUTE FUNCTION prevent_both_full_and_part_time();
 
 CREATE OR REPLACE FUNCTION prevent_part_time()
@@ -81,12 +124,12 @@ $$ LANGUAGE PLPGSQL;
 
 DROP TRIGGER IF EXISTS check_isNot_existing_when_adding_admin ON Administrators;
 CREATE TRIGGER check_isNot_existing_when_adding_admin
-BEFORE INSERT OR UPDATE ON Administrators
+BEFORE INSERT ON Administrators
 FOR EACH ROW EXECUTE FUNCTION check_isNot_Existing();
 
 DROP TRIGGER IF EXISTS check_isNot_existing_when_adding_manager ON Managers;
 CREATE TRIGGER check_isNot_existing_when_adding_manager
-BEFORE INSERT OR UPDATE ON MANAGERS
+BEFORE INSERT ON MANAGERS
 FOR EACH ROW EXECUTE FUNCTION check_isNot_Existing();
 
 DROP TRIGGER IF EXISTS check_isNot_existing_when_adding_instructor ON Instructors;
@@ -95,17 +138,17 @@ BEFORE INSERT OR UPDATE ON Instructors
 FOR EACH ROW EXECUTE FUNCTION check_isNot_Existing();
 
 
-CREATE OR REPLACE FUNCTION reject_operation()
-RETURNS TRIGGER AS $$ 
-BEGIN 
-    RAISE EXCEPTION 'Operation denied';
-END;
-$$ LANGUAGE PLPGSQL;
+-- CREATE OR REPLACE FUNCTION reject_operation()
+-- RETURNS TRIGGER AS $$ 
+-- BEGIN 
+--     RAISE EXCEPTION 'Operation denied';
+-- END;
+-- $$ LANGUAGE PLPGSQL;
 
-DROP TRIGGER IF EXISTS reject_course_offering_changes ON CourseOfferings;
-CREATE TRIGGER reject_course_offering_changes
-BEFORE DELETE ON COURSEOFFERINGS 
-FOR EACH ROW EXECUTE FUNCTION reject_operation();
+-- DROP TRIGGER IF EXISTS reject_course_offering_changes ON CourseOfferings;
+-- CREATE TRIGGER reject_course_offering_changes
+-- BEFORE DELETE ON COURSEOFFERINGS 
+-- FOR EACH ROW EXECUTE FUNCTION reject_operation();
 
 
 CREATE OR REPLACE FUNCTION before_sess_update_check_room_capacity()
@@ -132,7 +175,8 @@ FOR EACH ROW EXECUTE FUNCTION before_sess_update_check_room_capacity();
 CREATE OR REPLACE FUNCTION before_register_check_has_not_registered()
 RETURNS TRIGGER AS $$
 BEGIN 
-    IF EXISTS (SELECT 1 FROM SessionParticipants WHERE cust_id = NEW.cust_id AND sess_id = NEW.sess_id) THEN 
+    IF EXISTS (SELECT 1 FROM SessionParticipants 
+    WHERE cust_id = NEW.cust_id AND sess_id = NEW.sess_id) THEN 
         RAISE EXCEPTION 'Already registered for session';
     END IF;
     RETURN NEW;

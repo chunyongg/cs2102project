@@ -213,6 +213,6 @@ CREATE OR REPLACE VIEW EmployeeWorkingTypes AS
 CREATE OR REPLACE VIEW InstructorWorkingTypes AS 
 	SELECT emp_id, 'full time' as emp_type FROM FullTimeInstructors
 	UNION 
-	SELECT emp_id, 'part time' FROM PartTimeInstructors;
+	SELECT emp_id, 'part time' as emp_type FROM PartTimeInstructors;
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
