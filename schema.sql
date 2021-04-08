@@ -197,4 +197,13 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 	UNION
 	SELECT cust_id, sess_id, package_id
 	FROM Redeems;
+
+CREATE OR REPLACE VIEW EmployeeTypes AS 
+	SELECT emp_id FROM Administrators
+	UNION 
+	SELECT emp_id FROM Managers
+	UNION 
+	SELECT 
+	SELECT emp_id FROM Instructors;
+
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

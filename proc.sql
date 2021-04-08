@@ -3,6 +3,8 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- TRIGGERS AND THEIR FUNCTIONS (put as a pair!)
 
+CREATE OR REPLACE FUNCTION check_isNot
+
 CREATE OR REPLACE FUNCTION reject_operation()
 RETURNS TRIGGER AS $$ 
 BEGIN 
