@@ -76,7 +76,7 @@ create table Courses (
 
 create table CourseOfferings (
 	offering_id integer primary key,
-	launch_date date not null check(launch_date <= start_date),
+	launch_date date not null check(launch_date <= registration_deadline),
 	start_date date not null check (start_date <= end_date),
 	end_date date not null,
 	registration_deadline date not null check(registration_deadline <= start_date - 10),
