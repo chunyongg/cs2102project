@@ -29,6 +29,13 @@ create table FullTimeSalary(
 	primary key(payment_date, emp_id)
 );
 
+Create table PartTimeHoursWorked (
+	hours_worked integer DEFAULT 0 check (hours_worked >= 0),
+	month_year date check (date_part('day', month_year) = 1),
+	emp_id integer references PartTimeEmployees,
+	primary key (month_year, emp_id)
+);
+
 create table PartTimeSalary(
 	salary_amt numeric(10, 2) not null check (salary_amt >= 0),
 	payment_date date,
@@ -205,6 +212,8 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 <<<<<<< HEAD
 <<<<<<< HEAD
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+<<<<<<< HEAD
+=======
 -- TRIGGER FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 =======
@@ -230,8 +239,7 @@ CREATE OR REPLACE VIEW InstructorWorkingTypes AS
 	SELECT emp_id, 'part time' as emp_type FROM PartTimeInstructors;
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
->>>>>>> main
-=======
+
 
 CREATE OR REPLACE VIEW SessionsInOrder AS
     select sess_id, sess_date, start_time
@@ -242,4 +250,3 @@ CREATE OR REPLACE VIEW ManagerDetails AS
     select emp_id, emp_name
     from Managers natural left join Employees
     order by emp_name asc;
->>>>>>> 8ca4c79a121feb097051bb57ccbb6da86109c7a2
