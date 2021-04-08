@@ -33,5 +33,18 @@ add_course_offering(
 )
 
 CALL add_course_offering(11, 1, 300, 200, '2021-05-21', '2021-05-11', 42, '{"(2021-05-21,\"2021-05-21 00:00:00\",1)"}' :: SessionInfo[])
+-- Algorithms
+CALL add_course_offering(1, COURSE_ID , 100, 10, '2021-04-08', 
+'2021-04-08', ADMIN_ID , '{"(2021-04-19,\"2021-04-19 11:00:00\",INSTRUCTOR_ID)"}' :: SessionInfo[]);
 -- AI
-CALL add_course_offering(1, COURSE_ID , 100, 10, '2021-04-18', '2021-04-08', ADMIN_ID , );
+CALL add_course_offering(2, COURSE_ID , 100, 10, '2021-04-08', 
+'2021-04-08', ADMIN_ID , '{"(2021-04-20,\"2021-04-20 10:00:00\",INSTRUCTOR_ID)"}' :: SessionInfo[]);
+-- Game Design
+CALL add_course_offering(3, COURSE_ID , 100, 10, '2021-04-08', 
+'2021-04-08', ADMIN_ID , '{"(2021-04-21,\"2021-04-21 09:00:00\",INSTRUCTOR_ID)"}' :: SessionInfo[]);
+-- Computer Security
+CALL add_course_offering(4, COURSE_ID , 100, 10, '2021-04-08', 
+'2021-04-08', ADMIN_ID , '{"(2021-04-19,\"2021-04-22 17:00:00\",INSTRUCTOR_ID)"}' :: SessionInfo[]);
+-- Database Systems
+CALL add_course_offering(5, COURSE_ID , 100, 10, '2021-04-08', 
+'2021-04-08', ADMIN_ID , '{"(2021-04-19,\"2021-04-22 14:00:00\",INSTRUCTOR_ID)"}' :: SessionInfo[]);

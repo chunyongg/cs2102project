@@ -335,7 +335,7 @@ BEGIN
         IF d_date < CURRENT_DATE THEN 
         RAISE EXCEPTION 'Employee departed';
     END IF;
-    IF j_date < CURRENT_DATE THEN 
+    IF j_date > CURRENT_DATE THEN 
         RAISE EXCEPTION 'Employee not yet joined';
     END IF;
 END;
@@ -357,7 +357,7 @@ BEGIN
         IF d_date < CURRENT_DATE THEN 
         RAISE EXCEPTION 'Employee departed';
     END IF;
-    IF j_date < CURRENT_DATE THEN 
+    IF j_date > CURRENT_DATE THEN 
         RAISE EXCEPTION 'Employee not yet joined';
     END IF;
 END;
