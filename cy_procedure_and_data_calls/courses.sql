@@ -44,7 +44,10 @@ CALL add_course_offering(3, COURSE_ID , 100, 10, '2021-04-08',
 '2021-04-08', ADMIN_ID , '{"(2021-04-21,\"2021-04-21 09:00:00\",INSTRUCTOR_ID)"}' :: SessionInfo[]);
 -- Computer Security
 CALL add_course_offering(4, COURSE_ID , 100, 10, '2021-04-08', 
-'2021-04-08', ADMIN_ID , '{"(2021-04-19,\"2021-04-22 17:00:00\",INSTRUCTOR_ID)"}' :: SessionInfo[]);
+'2021-04-08', ADMIN_ID , '{"(2021-04-19,\"2021-04-19 17:00:00\",INSTRUCTOR_ID)"}' :: SessionInfo[]);
 -- Database Systems
 CALL add_course_offering(5, COURSE_ID , 100, 10, '2021-04-08', 
-'2021-04-08', ADMIN_ID , '{"(2021-04-19,\"2021-04-22 14:00:00\",INSTRUCTOR_ID)"}' :: SessionInfo[]);
+'2021-04-08', ADMIN_ID , '{"(2021-04-20,\"2021-04- 16:00:00\",INSTRUCTOR_ID)"}' :: SessionInfo[]);
+-- Networking
+CALL add_course_offering(6, COURSE_ID , 100, 10, '2021-04-08', 
+'2021-04-08', ADMIN_ID , '{"(2021-04-,\"2021-04-22 14:00:00\",INSTRUCTOR_ID)"}' :: SessionInfo[]);

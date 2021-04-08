@@ -338,6 +338,7 @@ BEGIN
     IF j_date > CURRENT_DATE THEN 
         RAISE EXCEPTION 'Employee not yet joined';
     END IF;
+    RETURN NEW;
 END;
 $$ LANGUAGE PLPGSQL;
 
@@ -360,6 +361,7 @@ BEGIN
     IF j_date > CURRENT_DATE THEN 
         RAISE EXCEPTION 'Employee not yet joined';
     END IF;
+    RETURN NEW;
 END;
 $$ LANGUAGE PLPGSQL;
 
