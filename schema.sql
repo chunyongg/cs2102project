@@ -153,12 +153,12 @@ create table CreditCards (
 );
 
 create table CoursePackages (
-  package_id serial primary key,
-  sale_start_date date not null,
-  sale_end_date date not null,
-  num_free_registrations integer not null check(price > 0),
-  package_name text not null,
-  price numeric(10, 2) not null check(price >= 0)
+	package_id serial primary key,
+	sale_start_date date not null check (sale_start_date <= sale_end_date),
+	sale_end_date date not null,
+	num_free_registrations integer not null check (num_free_registrations > 0),
+	package_name text not null,
+	price numeric(10, 2) not null check(price >= 0)
 );
 
 create table Buys (
@@ -224,6 +224,8 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 <<<<<<< HEAD
 =======
+<<<<<<< HEAD
+=======
 -- TRIGGER FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 =======
@@ -260,4 +262,5 @@ CREATE OR REPLACE VIEW ManagerDetails AS
     select emp_id, emp_name
     from Managers natural left join Employees
     order by emp_name asc;
+>>>>>>> main
 >>>>>>> main

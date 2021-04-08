@@ -1,6 +1,7 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- TRIGGERS AND THEIR FUNCTIONS (put as a pair!)
 -- Get instructor's work hours for that month
 CREATE OR REPLACE FUNCTION get_monthly_hours (
     IN eid INTEGER, IN mth DOUBLE PRECISION, IN yr DOUBLE PRECISION, 
