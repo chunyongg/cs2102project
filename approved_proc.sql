@@ -1,18 +1,230 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
+CREATE OR REPLACE FUNCTION get_manager_areas(IN emp_id integer)
+RETURNS TABLE(course_area text) -- total course areas
+AS $$
+    select course_area
+    from CourseAreas CA
+    where CA.manager_id = emp_id;
+$$ LANGUAGE sql;
+
+CREATE OR REPLACE FUNCTION get_at_least_partially_active_package(IN c_id integer)
+RETURNS integer AS $$
+declare
+    pid integer;
+begin
+    pid := (select B.package_id
+        from Buys B
+        where B.cust_id = c_id
+        and B.redemptions_left >= 1);
+    if (pid is not null) then -- active
+        return pid;
+    else
+        -- there exist a session where registered session is at least 7 days from today
+        -- => partially active
+        pid := (select B.package_id
+                from Buys B natural join Redeems R natural join Sessions S
+                where B.cust_id = c_id
+                and B.package_id = R.package_id
+                and R.sess_id = S.sess_id
+                and S.latest_cancel_date >= CURRENT_DATE);
+        if (pid is not null) then
+            return pid;
+        else
+            return null;
+        end if;
+    end if;
+end;
+$$ LANGUAGE plpgsql;
+
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- TRIGGERS AND THEIR FUNCTIONS (put as a pair!)
+-- A customer can only register for at most one sessions for each course offering
+CREATE OR REPLACE FUNCTION course_session_limit() RETURNS TRIGGER AS $$
+declare
+    oid integer;
+BEGIN
+    oid := (select S.offering_id from Sessions S where S.sess_id = New.sess_id);
+    if (exists (select SPS.sess_id
+        from (SessionParticipants natural join Sessions) SPS
+        where SPS.cust_id = New.cust_id
+        and SPS.offering_id = oid)) then
+        raise exception 'Customer is trying to register for more than one session
+            from the same course offering. Process aborted.';
+    else
+        return new;
+    end if;
+end;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER register_session_limit_trigger
+BEFORE INSERT ON Registers
+FOR EACH ROW EXECUTE FUNCTION course_session_limit();
+
+CREATE TRIGGER redeem_session_limit_trigger
+BEFORE INSERT ON Redeems
+FOR EACH ROW EXECUTE FUNCTION course_session_limit();
+
+-- Check Seating Capacity Trigger
+-- Only can join/change course offering if there is still seat available for new course offering
+CREATE OR REPLACE FUNCTION seating_capacity_limit() RETURNS TRIGGER AS $$
+declare
+    seats_taken integer;
+    seat_limit integer;
+BEGIN
+    if (TG_OP = 'INSERT' or (TG_OP = 'UPDATE' and old.sess_id <> new.sess_id)) then
+        seat_limit := (select R.seating_capacity
+            from Sessions S natural join Rooms R
+            where S.sess_id = New.sess_id);
+        seats_taken := (select count(*)
+            from SessionParticipants SP
+            where SP.sess_id = New.sess_id);
+        if (seats_taken < seat_limit) then
+            return new;
+        else
+            raise exception 'This Session is full, please try another Session.';
+        end if;
+    else
+        return new;
+    end if;
+end;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER register_exceeded_session_trigger
+BEFORE INSERT OR UPDATE ON Registers
+FOR EACH ROW EXECUTE FUNCTION seating_capacity_limit();
+
+CREATE TRIGGER redeem_exceeded_session_trigger
+BEFORE INSERT OR UPDATE ON Redeems
+FOR EACH ROW EXECUTE FUNCTION seating_capacity_limit();
+
+-- Enforce only 1 active/partially package per buyer TRIGGER
+-- 'Each customer can have at most one active
+-- or partially active package'
+CREATE OR REPLACE FUNCTION active_package_limit() RETURNS TRIGGER AS $$
+declare
+BEGIN
+    if (TG_OP = 'INSERT') then
+        if (exists (select B.package_id
+            from Buys B
+            where B.cust_id = New.cust_id
+            and B.redemptions_left > 0)) then -- active
+            raise exception 'Customer can only have one active package.';
+        elsif (exists (select B.package_id
+                from Buys B natural join Redeems R natural join Sessions S
+                where B.cust_id = New.cust_id
+                and S.latest_cancel_date >= CURRENT_DATE)) then -- partially active
+            raise exception 'Customer can only have one partially active package.';
+        else
+            return new;
+        end if;
+    end if;
+end;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER buy_excessive_active_package_trigger
+BEFORE INSERT ON Buys
+FOR EACH ROW EXECUTE FUNCTION active_package_limit();
+
+-- Trigger for when inserting Redemptions into Redeems -> need ensure it corr to redemptions left in Buys
+-- Redeem(redeem_date, sess_id, package_id, cust_id)
+
+CREATE OR REPLACE FUNCTION redeem_sess() RETURNS TRIGGER AS $$
+declare
+    r_left integer;
+begin
+    select redemptions_left into r_left
+        from Buys
+        where cust_id = New.cust_id
+        and package_id = New.package_id;
+    if (r_left = 0) then
+        raise exception 'There is no more redemptions left in the package, redemption of new session failed.';
+    else
+        return new;
+    end if;
+end;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER redeem_session_trigger
+BEFORE INSERT ON Redeems
+FOR EACH ROW EXECUTE FUNCTION redeem_sess();
+
+-- Trigger on Updating CreditCard
+-- Check expiry day is not before current date
+
+CREATE OR REPLACE FUNCTION update_cc() RETURNS TRIGGER AS $$
+BEGIN
+    if (New.expiry_date <= current_date) then
+        raise exception 'Credit Card has expired, please update with a valid card.';
+    else
+        return New;
+    end if;
+end;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_cc_trigger
+BEFORE INSERT or UPDATE ON CreditCards
+FOR EACH ROW EXECUTE FUNCTION update_cc();
+
+-- Check that current date within sale range before buying course package
+
+CREATE OR REPLACE FUNCTION check_sale_period()
+RETURNS TRIGGER AS $$
+declare
+    _sale_start date;
+    _sale_end date;
+begin
+    select CP.sale_start_date, CP.sale_end_date
+        into _sale_start, _sale_end
+        from CoursePackages CP
+        where CP.package_id = New.package_id;
+        if (CURRENT_DATE not between _sale_start and _sale_end) then
+            raise exception 'Course Package not available for Sale.';
+        end if;
+        return New;
+end;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER buy_package_trigger
+BEFORE INSERT ON Buys
+FOR EACH ROW EXECUTE FUNCTION check_sale_period();
+
+-- Do not allow change in session if session started
+CREATE OR REPLACE FUNCTION check_session_period()
+RETURNS TRIGGER AS $$
+declare
+    _curr_sess_start date;
+    _new_sess_start date;
+begin
+    select S.start_time
+    into _curr_sess_start
+    from Sessions S
+    where S.sess_id = old.sess_id;
+    select S.start_time
+    into _new_sess_start
+    from Sessions S
+    where S.sess_id = new.sess_id;
+    if (_curr_sess_start <= LOCALTIMESTAMP or _new_sess_start <= LOCALTIMESTAMP) THEN
+	    RAISE EXCEPTION 'Session already started';
+    end if;
+    return New;
+end;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER change_reg_session_trigger
+BEFORE UPDATE ON Registers
+FOR EACH ROW EXECUTE FUNCTION check_session_period();
+
+CREATE TRIGGER change_redeem_session_trigger
+BEFORE UPDATE ON Redeems
+FOR EACH ROW EXECUTE FUNCTION check_session_period();
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- CHUN YONG'S FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- RUI EN's FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- XINYEE's FUNCTIONS
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- MICH's FUNCTIONS
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
---F3 DONE
+--F3
 CREATE OR REPLACE PROCEDURE add_customer(IN c_name text, IN c_address text,
 IN c_phone integer, IN c_email text,  IN c_cc_number varchar(16),
 IN c_cc_cvv integer, IN c_cc_expiry_date date)
@@ -69,39 +281,6 @@ $$ LANGUAGE plpgsql;
 --F14 DONE
 -- active -> at least one used session
 -- partially active -> all redeemed but at least one redeemed session that could be refunded if cancelled
-CREATE OR REPLACE VIEW SessionsInOrder as
-    select sess_id, sess_date, start_time
-    from Sessions
-    order by (sess_date, start_time) asc;
-
-CREATE OR REPLACE FUNCTION get_at_least_partially_active_package(IN c_id integer)
-RETURNS integer AS $$
-declare
-    pid integer;
-begin
-    pid := (select B.package_id
-        from Buys B
-        where B.cust_id = c_id
-        and B.redemptions_left >= 1);
-    if (pid is not null) then -- active
-        return pid;
-    else
-        -- there exist a session where registered session is at least 7 days from today
-        -- => partially active
-        pid := (select B.package_id
-                from Buys B natural join Redeems R natural join Sessions S
-                where B.cust_id = c_id
-                and B.package_id = R.package_id
-                and R.sess_id = S.sess_id
-                and S.latest_cancel_date >= CURRENT_DATE);
-        if (pid is not null) then
-            return pid;
-        else
-            return null;
-        end if;
-    end if;
-end;
-$$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION get_my_course_package_table(IN c_id integer)
 RETURNS TABLE (package_name text, buy_date date, price numeric(10,2), num_free_registrations integer,
@@ -126,9 +305,10 @@ begin
     where B.package_id = pid and B.cust_id = c_id;
 
     for s in select sess_id
-        from Redeems R
-        where R.package_id = pid
-        and R.cust_id = c_id
+        from Redeems natural join SessionsInOrder
+        where package_id = pid
+        and cust_id = c_id
+
     loop
         _course_id := (select SCO.course_id
         from (Sessions natural join CourseOfferings)SCO
@@ -167,7 +347,167 @@ begin
         end if;
     end if;
 end;
+$$ language plpgsql
+
+CREATE OR REPLACE VIEW SessionParticipants AS
+    select cust_id, sess_id, null as package_id
+    from Registers
+    union
+    select cust_id, sess_id, package_id
+    from Redeems;
+
+-- Self created function for F19 & F20
+-- check if registered for any session for that offering, return boolean
+create or replace function checkRegisterSession(IN cid integer, IN sid integer)
+returns boolean as $$
+begin
+    return exists (select R.sess_id
+    from Registers R
+    where R.sess_id = sid
+    and R.cust_id = cid);
+end;
 $$ language plpgsql;
+
+-- Self created function for F19 & F20
+-- check if redeem any session for that offering, return boolean
+create or replace function checkRedeemSession(IN cid integer, IN sid integer)
+returns boolean as $$
+begin
+    return exists (select R.sess_id
+    from Redeems R
+    where R.sess_id = sid
+    and R.cust_id = cid);
+end;
+$$ language plpgsql;
+
+--F19 DONE
+CREATE OR REPLACE PROCEDURE update_course_session(IN cid integer, IN oid integer, IN _sess_num integer)
+AS $$
+declare
+    rid integer;
+    old_sid integer;
+    new_sid integer;
+begin
+    SELECT sess_id
+        INTO old_sid
+        FROM SessionParticipants NATURAL JOIN Sessions
+        WHERE cust_id = cid
+        AND offering_id = oid;
+
+    SELECT sess_id
+        INTO new_sid
+        FROM Sessions
+        WHERE offering_id = oid
+        AND sess_num = _sess_num;
+
+    IF (not exists (select C.cust_id from Customers C where C.cust_id = cid)) then
+        raise exception 'Customer does not exist in the system, purchase failed.';
+    ELSIF (new_sid is null) then
+        raise exception 'Session does not exist.';
+    ELSIF (not exists(select SP.cust_id from SessionParticipants SP where SP.cust_id = cid)) then
+        raise exception 'Customer did not register for any sessions, updating of session failed.';
+    ELSIF (not exists (select SPS.sess_id FROM (SessionParticipants natural join Sessions)SPS
+        where SPS.cust_id = cid AND SPS.offering_id = oid)) THEN
+            raise exception 'Customer is not registered in a session of the input course offering.';
+    ELSIF exists(select SPS.sess_id
+        from (SessionParticipants natural join Sessions)SPS
+        where SPS.cust_id = cid
+        and SPS.offering_id = oid
+        and SPS.sess_num = _sess_num) then
+        raise exception 'Customer is already enrolled in the course session.';
+    ELSE
+        if (checkRegisterSession(cid, old_sid) is true) then
+            UPDATE Registers
+            SET sess_id = new_sid
+            WHERE cust_id = cid;
+        elseif (checkRedeemSession(cid, old_sid) is true) then
+            UPDATE Redeems
+            SET sess_id = new_sid
+            WHERE cust_id = cid;
+        end if;
+    end if;
+end;
+$$ LANGUAGE plpgsql;
+
+--F20 DONE
+CREATE OR REPLACE PROCEDURE cancel_registration(IN cid integer, IN oid integer)
+AS $$
+declare
+    _sess_id integer;
+    cancel_date date;
+    _sess_date date;
+    _latest_date date;
+    pid integer;
+    price numeric(10,2);
+    refund_amt numeric(10,2);
+    package_credit integer;
+begin
+    cancel_date := current_date;
+    _sess_id := (select SPS.sess_id
+            from (SessionParticipants natural join Sessions)SPS
+            where SPS.offering_id = oid
+            and SPS.cust_id = cid);
+
+    IF not exists (select C.cust_id from Customers C where C.cust_id = cid) then
+        raise exception 'Customer does not exist in the system, purchase failed.';
+    ELSIF not exists(select CO.offering_id from CourseOfferings CO where CO.offering_id = oid) then
+        raise exception 'Offering does not exist in the system, please check again.';
+    ELSIF not exists(select SP.cust_id from SessionParticipants SP where SP.cust_id = cid) then
+        raise exception 'Customer did not register for any sessions, cancellation process failed.';
+    ELSIF (_sess_id) is null then
+        raise exception 'Customer did not register for any sessions in the offering, please check again.';
+    ELSIF ((select S.start_time from Sessions S where S.sess_id = _sess_id) <= localtimestamp) then
+        raise exception 'Session has started, cancellation of registration is not allowed.';
+    ELSE
+        if (checkRegisterSession(cid, _sess_id)) then
+            package_credit := 0;
+            price := (select CO.fees from CourseOfferings CO where CO.offering_id = oid);
+            _sess_date := (select S.sess_date
+                from Sessions S
+                where S.sess_id = _sess_id
+                and S.offering_id = oid);
+            _latest_date := (select S.latest_cancel_date
+                from Sessions S
+                where S.sess_id = _sess_id
+                and S.offering_id = oid);
+            if (select (cancel_date <= _latest_date)) then
+                refund_amt := price * 9/10;
+            else
+                refund_amt := 0;
+            end if;
+            DELETE from Registers
+            WHERE cust_id = cid
+            and sess_id = _sess_id;
+            INSERT INTO Cancels
+            VALUES (cancel_date, refund_amt, package_credit, cid, _sess_id);
+        elsif (checkRedeemSession(cid, _sess_id)) then
+            refund_amt := 0;
+            _latest_date := (select S.latest_cancel_date
+                from Sessions S
+                where S.sess_id = _sess_id
+                and S.offering_id = oid);
+            pid := (select SP.package_id
+                from SessionParticipants SP
+                where SP.cust_id = cid
+                and SP.sess_id = _sess_id);
+                DELETE from Redeems
+                WHERE cust_id = cid
+                and sess_id = _sess_id;
+            if (select (cancel_date <= _latest_date)) then
+                package_credit := 1;
+                UPDATE Buys
+                SET redemptions_left =  redemptions_left + 1
+                WHERE cust_id = cid
+                and package_id = pid;
+            else
+                package_credit := 0;
+            end if;
+            INSERT INTO Cancels
+                VALUES (cancel_date, refund_amt, package_credit, cid, _sess_id);
+        end if;
+    end if;
+end;
+$$ LANGUAGE plpgsql;
 
 -- F30 DONE
 -- View sales generated by each manager
@@ -179,18 +519,6 @@ $$ language plpgsql;
 -- reg redemption fee = package fee/no. of sessions
 -- must be one output for each manager
 -- output sorted by asc order
-CREATE OR REPLACE VIEW ManagerDetails as
-    select emp_id, emp_name
-    from Managers natural left join Employees
-    order by emp_name asc;
-
-CREATE OR REPLACE FUNCTION get_manager_areas(IN emp_id integer)
-RETURNS TABLE(course_area text) -- total course areas
-AS $$
-    select course_area
-    from CourseAreas CA
-    where CA.manager_id = emp_id;
-$$ LANGUAGE sql;
 
 -- Time range: only for current year
 CREATE OR REPLACE FUNCTION get_total_course_offerings_of_area(IN _course_area text)
@@ -342,3 +670,7 @@ begin
     close curs;
 end;
 $$ LANGUAGE plpgsql;
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- MICH's FUNCTIONS
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
