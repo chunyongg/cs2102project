@@ -1,34 +1,7 @@
--- update data SOP
-delete from Table;
-alter sequence Table_attribute_seq restart with 1 -- (resets serial number) e.g. ALTER SEQUENCE employees_emp_id_seq RESTART WITH 1
-insert into Table values ();
-
-insert into Rooms values
-(default, '01-01', 20),
-(default, '01-02', 20),
-(default, '01-03', 20),
-(default, '01-04', 20),
-(default, '01-05', 20),
-(default, '02-01', 25),
-(default, '02-02', 25),
-(default, '02-03', 25),
-(default, '02-04', 25),
-(default, '02-05', 25),
-(default, '03-01', 30),
-(default, '03-02', 30),
-(default, '03-03', 30),
-(default, '03-04', 30),
-(default, '03-05', 30),
-(default, '04-01', 35),
-(default, '04-02', 35),
-(default, '04-03', 35),
-(default, '04-04', 35),
-(default, '04-05', 35),
-(default, '05-01', 40),
-(default, '05-02', 40),
-(default, '05-03', 40),
-(default, '05-04', 40),
-(default, '05-05', 40);
+-- NOTES:
+-- 1. Fill up all tables with at least 10 records
+-- 2. Make sure the data matches the foreign key requirements
+-- 3. Feel free to add comments :)
 
 insert into Employees values
 -- admin
@@ -64,9 +37,7 @@ insert into Employees values
 (default, 'Jared Wong', '7 Pasir Panjang Road', 91841170, 'jared.wong@gmail.com', '2021-02-01', '2021-08-01'),
 (default, 'June Lim', '1 Brooke Rd', 97416583, 'june.lim@gmail.com', '2019-08-01', '2021-05-01'),
 (default, 'Historia Reiss', 'Blk 407b Fernvale Road', 82956254, 'historia.reiss@gmail.com', '2021-01-01', null),
-(default, 'Eren Yeager', '244 Westwood Ave', 97390470, 'eren.yeager@gmail.com', '2020-03-01', null),
-(default, 'Stephen Tan', '63 West Coast Rd', 92287290, 'stephen.tan@gmail.com', '2020-04-01', null),
-(default, 'Yxavion Lim', '709 Tampines Street 54', 86215290, 'yxavion.lim@gmail.com', '2020-01-01', null);
+(default, 'Eren Yeager', '244 Westwood Ave', 97390470, 'eren.yeager@gmail.com', '2020-03-01', null);
 
 insert into FullTimeEmployees values
 (7000, 1),
@@ -101,8 +72,35 @@ insert into PartTimeEmployees values
 (37.5, 28),
 (35, 29),
 (50, 30),
-(40, 31),
-(35, 32);
+(),
+(),
+(),
+(),
+();
+
+insert into FullTimeSalary values
+(),
+(),
+(),
+(),
+(),
+(),
+(),
+(),
+(),
+();
+
+insert into PartTimeSalary values
+(),
+(),
+(),
+(),
+(),
+(),
+(),
+(),
+(),
+();
 
 insert into Administrators values
 (1),
@@ -138,9 +136,7 @@ insert into Instructors values
 (27),
 (28),
 (29),
-(30),
-(31),
-(32);
+(30);
 
 insert into CourseAreas values
 ('Algorithms and Theory', 11),
@@ -159,23 +155,24 @@ insert into FullTimeInstructors values
 (22),
 (23),
 (24),
-(25);
+(25),
+(),
+(),
+(),
+(),
+();
 
 insert into PartTimeInstructors values
-<<<<<<< HEAD
-('Computer Networking', 26),
-('Parallel Computing', 27),
-('Software Engineering', 28),
-('Data Analytics', 29),
-('Programming Languages', 30),
-('Computer Networking', 31),
-('Database Systems', 32);
-=======
 (26),
 (27),
 (28),
 (29),
-(30);
+(30),
+(),
+(),
+(),
+(),
+();
 
 insert into Specializations values
 (21, 'Algorithms and Theory'),
@@ -188,7 +185,6 @@ insert into Specializations values
 (28, 'Software Engineering'),
 (29, 'Data Analytics'),
 (30, 'Programming Languages');
->>>>>>> main
 
 -- The earliest session can start at 9am and the latest session (for each day) must end by 6pm, and no sessions are conducted between 12pm to 2pm
 -- So the maximum duration should be 7 hours
@@ -214,18 +210,11 @@ insert into Courses values
 (default, 3, 'Programming Language Implementation', 'This course discusses implementation aspects of fundamental programming paradigms.', 'Programming Languages'),
 (default, 2, 'Internet of Things', null, 'Computer Networking');
 
-insert into CoursePackages values
-<<<<<<< HEAD
-(default, '2021-01-01', '2021-12-01', 5, '2021 Sale', '4000'),
-(default, '2021-03-01', '2021-04-01', 1, 'March Sale', '500'),
-(default, '2021-05-01', '2021-08-01', 2, 'Summer Break Sale', '800');
-
-delete from CourseOfferings;
-insert into CourseOfferings values
 -- offering_id, launch_date, start_date, end_date, registration_deadline, registration_target, fees, seating_capacity, admin_id, course_id
 -- Each course can be offered mutiple times per year
 -- The offerings for the same course have different launch dates
 -- Each course offering consists of one or more sessions
+insert into CourseOfferings values
 (1,  '2021-01-01', '2021-01-01', '2021-02-01', '2020-12-22', 20, 100.00, 20,  1, 1), -- database, 1 session (room_id = 1, capacity = 20) 
 (2,  '2021-02-01', '2021-02-01', '2021-03-01', '2021-01-22', 20, 100.00, 20, 2, 1),  -- database, 1 session (room_id = 2, capacity = 20)
 (3,  '2021-03-01', '2021-03-01', '2021-04-01', '2021-02-19', 20, 100.00, 20, 3, 1),  -- database, 1 session (room_id = 3, capacity = 20)
@@ -236,23 +225,37 @@ insert into CourseOfferings values
 (8,  '2021-08-01', '2021-08-01', '2021-09-01', '2021-07-22', 50, 100.00, 50, 8, 5),  -- parallel computing, 2 sessions (room_id = 6 & 7, capacity = 25 + 25)
 (9,  '2021-09-01', '2021-09-01', '2021-10-01', '2021-08-22', 40, 100.00, 40, 9, 6),  -- machine learning, 2 sessions (room_id = 4 & 5, capacity = 20 + 20)
 (10, '2021-10-01', '2021-10-01', '2021-11-01', '2021-09-21', 70, 100.00, 70, 10, 7); -- computer networks, 2 sessions (room_id = 16 & 17 capacity = 35 + 35)
-=======
-(default, '2021-01-01', '2021-12-01', 5, '2021 Sale', 450),
-(default, '2021-03-01', '2021-04-01', 1, 'March Sale', 80),
-(default, '2021-05-01', '2021-08-01', 2, 'Summer Break Sale', 180),
-(default, '2021-09-01', '2021-10-01', 1, 'September Sale', 80),
-(default, '2021-11-01', '2022-01-01', 2, 'Winter Break Sale', 180),
-(default, '2021-02-01', '2021-02-26', 3, 'Chinese New Year Sale', 288.88),
-(default, '2021-04-01', '2021-04-20', 1, 'April Flash Sale', 59.99),
-(default, '2021-05-15', '2021-05-31', 3, 'Mayday Sale', 250),
-(default, '2021-08-01', '2021-08-31', 8, 'National Day Sale', 788),
-(default, '2021-12-01', '2021-12-31', 4, 'Christmas Sale', 370);
->>>>>>> main
 
-insert into Sessions values 
-<<<<<<< HEAD
+insert into Rooms values
+(default, '01-01', 20),
+(default, '01-02', 20),
+(default, '01-03', 20),
+(default, '01-04', 20),
+(default, '01-05', 20),
+(default, '02-01', 25),
+(default, '02-02', 25),
+(default, '02-03', 25),
+(default, '02-04', 25),
+(default, '02-05', 25),
+(default, '03-01', 30),
+(default, '03-02', 30),
+(default, '03-03', 30),
+(default, '03-04', 30),
+(default, '03-05', 30),
+(default, '04-01', 35),
+(default, '04-02', 35),
+(default, '04-03', 35),
+(default, '04-04', 35),
+(default, '04-05', 35),
+(default, '05-01', 40),
+(default, '05-02', 40),
+(default, '05-03', 40),
+(default, '05-04', 40),
+(default, '05-05', 40);
+
 -- sess_id, sess_num, start_time, end_time, sess_date, latest_cancel_date, instructor_id, offering_id, room_id
 -- The sessions for a course offering are numbered consecutively starting from 1; we refer to these as session numbers
+insert into Sessions values 
 (default, 1, '2021-01-01 09:00:00', '2021-01-01 10:00:00', '2021-01-01', '2020-12-25', 25, 1, 1),   -- offering_id 1,  course_id = 1, capacity = 20, database (25)
 (default, 1, '2021-02-01 10:00:00', '2021-02-01 11:00:00', '2021-02-01', '2021-01-25', 25, 2, 2),   -- offering_id 2,  course_id = 1, capacity = 20, database (25)
 (default, 1, '2021-03-01 11:00:00', '2021-03-01 12:00:00', '2021-03-01', '2021-02-22', 25, 3, 3),   -- offering_id 3,  course_id = 1, capacity = 20, database (25)
@@ -271,8 +274,6 @@ insert into Sessions values
 (default, 2, '2021-07-15 10:00:00', '2021-07-15 11:00:00', '2021-07-15', '2021-07-08', 30, 7, 24),  -- offering_id 7,  course_id = 4, capacity = 40, programming language (30)
 (default, 3, '2021-08-02 10:00:00', '2021-08-02 11:00:00', '2021-08-02', '2021-07-26', 30, 7, 25);  -- offering_id 7,  course_id = 4, capacity = 40, programming language (30)
 
-delete from Customers;
-alter sequence Customers_cust_id_seq restart with 1;
 insert into Customers values
 (default, '13 Lor 8 Toa Payoh', 98264332, 'Xia Cheng', 'xiacheng@gmail.com'),
 (default, '51 New Bridge Road', 82654397, 'Shi Hui Min', 'huimin96@yahoo.com'),
@@ -298,9 +299,20 @@ insert into Customers values
 (default, '23 Simei Center', 90816006, 'Preeti Sun', 'preeti@me.com'),
 (default, '65 Chong Pang Green', 82936537, 'Adi Wahid', 'adi_wahid@email.com'),
 (default, '7 Teck Ghee Road', 92298531, 'Amanda Hong', 'amandahong@gmail.com'),
-(default, '6 Choa Chu Kang Hill', 83553470, 'Hassan Nasser', 'hassan@me.com');
+(default, '6 Choa Chu Kang Hill', 83553470, 'Hassan Nasser', 'hassan@me.com'),
+-- inactive customers who last registered 6 months ago
+(default, '2 Gul Circle', 95554522, 'Andy Lim', 'andy.lim@gmail.com'),
+(default, '135 Venus Loop', 85554703, 'Sheryl Goh', 'sheryl.goh@gmail.com'),
+(default, '42 Ang Mo Kio Street 62', 95553396, 'Justin Lim', 'justin.lim@gmail.com'),
+(default, '1691 Donnelly Corner', 95602298, 'Alicia Tan', 'alicia.tan@gmail.com'),
+(default, '119 Ramsgate Road', 92949631, 'Joey Siow', 'joey.siow@gmail.com'),
+(default, '134 Fort Road South', 83368988, 'Joel Tay', 'joel.tay@gmail.com'),
+(default, '20 Penjuru Place', 92763331, 'Shawn Tan', 'shawn.tan@gmail.com'),
+-- inactive customers who have never registered before
+(default, '144 Lorong Lew Lian', 94492819, 'Sean Tan', 'sean.tan@gmail.com'),
+(default, '154 Kian Teck Drive', 85602298, 'Sally Wong', 'sally.wong@gmail.com'),
+(default, '152 Paya Lebar Road', 92931141, 'Jovan Wong', 'jovan.wong@gmail.com');
 
-delete from CreditCards;
 insert into CreditCards values
 ('4602659607038509', 725, '2022-01-01', 1),
 ('3487730179254246', 135, '2023-02-01', 2),
@@ -326,19 +338,55 @@ insert into CreditCards values
 ('4713286671658115', 754, '2023-03-01', 22),
 ('5344835097660156', 893, '2022-02-01', 23),
 ('5392456596274919', 443, '2024-01-01', 24),
-('3411892055157023', 369, '2023-12-01', 25);
+('3411892055157028', 369, '2023-12-01', 25);
 
-delete from Registers;
+insert into CoursePackages values
+(default, '2021-01-01', '2021-12-01', 5, '2021 Sale', 450),
+(default, '2021-03-01', '2021-04-01', 1, 'March Sale', 80),
+(default, '2021-05-01', '2021-08-01', 2, 'Summer Break Sale', 180),
+(default, '2021-09-01', '2021-10-01', 1, 'September Sale', 80),
+(default, '2021-11-01', '2022-01-01', 2, 'Winter Break Sale', 180),
+(default, '2021-02-01', '2021-02-26', 3, 'Chinese New Year Sale', 288.88),
+(default, '2021-04-01', '2021-04-20', 1, 'April Flash Sale', 59.99),
+(default, '2021-05-15', '2021-05-31', 3, 'Mayday Sale', 250),
+(default, '2021-08-01', '2021-08-31', 8, 'National Day Sale', 788),
+(default, '2021-12-01', '2021-12-31', 4, 'Christmas Sale', 370);
+
+insert into Buys values
+-- package 1
+('2021-03-01', 5, 1, 1, '4602659607038509'),
+('2021-01-14', 5, 1, 6, '4209949185032728'),
+('2021-02-15', 5, 1, 16, '4255179226593710'),
+('2021-02-26', 5, 1, 14, '5598648621344095'),
+('2021-03-13', 5, 1, 10, '4246936242452879'),
+('2021-04-02', 5, 1, 23, '5344835097660156'),
+-- package 2
+('2021-03-14', 1, 2, 1, '4602659607038509'),
+('2021-03-14', 1, 2, 3, '4347465053571468'),
+('2021-03-21', 1, 2, 5, '5204007499487609'),
+-- package 6
+('2021-02-01', 3, 6, 2, '3487730179254246'),
+('2021-02-01', 3, 6, 4, '6011160715370157'),
+('2021-02-01', 3, 6, 6, '4209949185032728'),
+('2021-02-02', 3, 6, 8, '3674217885515676'),
+('2021-02-05', 3, 6, 10, '4246936242452879'),
+('2021-02-10', 3, 6, 12, '4716439600987074'),
+('2021-02-21', 3, 6, 14, '5598648621344095'),
+-- package 7
+('2021-04-01', 1, 7, 4, '6011160715370157'),
+('2021-04-01', 1, 7, 7, '3710753283744374'),
+('2021-04-02', 1, 7, 24, '5392456596274919');
+
 insert into Registers values 
-('2021-07-01', 1,  6,  '4602659607038509'),
-('2021-07-01', 2,  6,  '3487730179254246'),
-('2021-07-01', 3,  6,  '4347465053571468'),
-('2021-07-01', 4,  6,  '6011160715370157'),
-('2021-07-01', 5,  6,  '5204007499487609'),
-('2021-07-02', 6,  6,  '4209949185032728'),
-('2021-07-03', 7,  6,  '3710753283744374'),
-('2021-07-04', 8,  6,  '3674217885515676'),
-('2021-07-05', 9,  6,  '5491129751647597'),
+('2021-07-01', 1,  6, '4602659607038509'),
+('2021-07-01', 2,  6, '3487730179254246'),
+('2021-07-01', 3,  6, '4347465053571468'),
+('2021-07-01', 4,  6, '6011160715370157'),
+('2021-07-01', 5,  6, '5204007499487609'),
+('2021-07-02', 6,  6, '4209949185032728'),
+('2021-07-03', 7,  6, '3710753283744374'),
+('2021-07-04', 8,  6, '3674217885515676'),
+('2021-07-05', 9,  6, '5491129751647597'),
 ('2021-07-06', 10, 6, '4246936242452879'),
 ('2021-07-07', 11, 6, '3770148713541449'),
 ('2021-07-08', 12, 6, '4716439600987074'),
@@ -356,37 +404,27 @@ insert into Registers values
 ('2021-07-20', 24, 6, '5392456596274919'),
 ('2021-07-21', 25, 6, '3411892055157023'),
 ('2021-07-21', 1,  7, '4602659607038509');
-=======
-(default, 1, '2021-11-01 14:00:00', '2021-11-01 15:00:00', '2021-11-01', '2021-10-25', 21, 10, '2021-10-01'),
-(default, 2, '2021-11-01 17:00:00', '2021-11-01 18:00:00', '2021-11-01', '2021-10-25', 21, 10, '2021-10-01'),
-(default, 3, '2021-12-01 14:00:00', '2021-12-01 15:00:00', '2021-12-01', '2021-11-24', 21, 10, '2021-10-01'),
-(default, 1, '2021-09-01 09:00:00', '2021-09-01 10:00:00', '2021-09-01', '2021-08-25', 22, 8, '2021-08-01'),
-(default, 2, '2021-10-01 11:00:00', '2021-10-01 12:00:00', '2021-10-01', '2021-09-24', 22, 8, '2021-08-01'),
-(default, 1, '2021-07-01 11:00:00', '2021-07-01 12:00:00', '2021-07-01', '2021-06-24', 26, 6, '2021-06-01'),
-(default, 1, '2021-06-01 15:00:00', '2021-06-01 16:00:00', '2021-06-01', '2021-05-24', 27, 5, '2021-05-01'),
-(default, 1, '2021-04-01 11:00:00', '2021-04-01 12:00:00', '2021-04-01', '2021-03-24', 29, 3, '2021-03-01');
 
-insert into Buys values
-('2021-03-01', 5, 1, 1, '4602659607038509'),
-('2021-01-14', 5, 1, 6, '4209949185032728'),
-('2021-02-15', 5, 1, 16, '4255179226593710'),
-('2021-02-26', 5, 1, 14, '5598648621344095'),
-('2021-03-13', 5, 1, 10, '4246936242452879'),
-('2021-04-02', 5, 1, 23, '5344835097660156'),
+insert into Cancels values
+(),
+(),
+(),
+(),
+(),
+(),
+(),
+(),
+(),
+();
 
-('2021-03-14', 1, 2, 1, '4602659607038509'),
-('2021-03-14', 1, 2, 3, '4347465053571468'),
-('2021-03-21', 1, 2, 5, '5204007499487609'),
-
-('2021-02-01', 3, 6, 2, '3487730179254246'),
-('2021-02-01', 3, 6, 4, '6011160715370157'),
-('2021-02-01', 3, 6, 6, '4209949185032728'),
-('2021-02-02', 3, 6, 8, '3674217885515676'),
-('2021-02-05', 3, 6, 10, '4246936242452879'),
-('2021-02-10', 3, 6, 12, '4716439600987074'),
-('2021-02-21', 3, 6, 14, '5598648621344095'),
-
-('2021-04-01', 1, 7, 4, '6011160715370157'),
-('2021-04-01', 1, 7, 7, '3710753283744374'),
-('2021-04-02', 1, 7, 24, '5392456596274919');
->>>>>>> main
+insert into Redeems values
+(),
+(),
+(),
+(),
+(),
+(),
+(),
+(),
+(),
+();
