@@ -12,6 +12,31 @@ create table Employees (
 );
 
 create table FullTimeEmployees (
+<<<<<<< HEAD
+	monthly_salary numeric(10, 2) not null check (monthly_salary > 0),
+	emp_id integer primary key references Employees on delete cascade
+);
+
+create table PartTimeEmployees(
+	hourly_rate numeric(10, 2) not null check (hourly_rate > 0),
+	emp_id integer primary key references Employees on delete cascade
+);
+
+create table FullTimeSalary(
+	salary_amt numeric(10, 2) not null check (salary_amt >= 0),
+	payment_date date,
+	days integer not null check (days >= 0),
+	emp_id integer references FullTimeEmployees,
+	primary key(payment_date, emp_id)
+);
+
+create table PartTimeSalary(
+	salary_amt numeric(10, 2) not null check (salary_amt >= 0),
+	payment_date date,
+	hours integer not null check (hours >= 0),
+	emp_id integer references PartTimeEmployees,
+	primary key(payment_date, emp_id)
+=======
   monthly_salary numeric(10, 2) not null,
   emp_id integer primary key references Employees on delete cascade
 );
@@ -35,6 +60,7 @@ create table PartTimeSalary(
   hours integer not null,
   emp_id integer references PartTimeEmployees,
   primary key(payment_date, emp_id)
+>>>>>>> main
 );
 
 create table Administrators(
@@ -84,8 +110,8 @@ create table CourseOfferings (
 	end_date date not null,
 	registration_deadline date not null check(registration_deadline <= start_date - 10),
 	target_number_registrations integer not null,
-	fees numeric(10, 2) not null,
-	seating_capacity integer not null,
+	fees numeric(10, 2) not null check (fees >= 0),
+	seating_capacity integer not null check (seating_capacity > 0),
 	admin_id integer not null references Administrators,
 	course_id integer references Courses(course_id) on delete cascade,
 	unique(course_id, launch_date)
@@ -98,34 +124,34 @@ create table Rooms (
 );
 
 create table Sessions (
-  sess_id serial primary key,
-  sess_num integer not null,
-  start_time timestamp not null check(
-    start_time < end_time
-    and date_part('hour', start_time) >= 9
-    and date_part('hour', start_time) not in (12, 13)
-    and extract(
-      dow
-      from
-        start_time
-    ) in (1, 2, 3, 4, 5)
-  ),
-  end_time timestamp not null check (
-    end_time > start_time
-    and date_part('hour', end_time) <= 18
-    and date_part('hour', end_time) not in (13, 14)
-    and extract(
-      dow
-      from
-        end_time
-    ) in (1, 2, 3, 4, 5)
-  ),
-  sess_date date not null,
-  latest_cancel_date date check(latest_cancel_date = sess_date - 7),
-  instructor_id integer not null references Instructors,
-  offering_id integer not null references CourseOfferings(offering_id),
-  room_id integer not null references Rooms,
-  unique(offering_id, sess_num)
+	sess_id serial primary key,
+	sess_num integer not null check (sess_num > 0),
+	start_time timestamp not null check(
+		start_time < end_time
+		and date_part('hour', start_time) >= 9
+		and date_part('hour', start_time) not in (12, 13)
+		and extract(
+			dow
+			from
+				start_time
+		) in (1, 2, 3, 4, 5)
+	),
+	end_time timestamp not null check (
+		end_time > start_time
+		and date_part('hour', end_time) <= 18
+		and date_part('hour', end_time) not in (13, 14)
+		and extract(
+			dow
+			from
+				end_time
+		) in (1, 2, 3, 4, 5)
+	),
+	sess_date date not null,
+	latest_cancel_date date check(latest_cancel_date = sess_date - 7),
+	instructor_id integer not null references Instructors,
+	offering_id integer not null references CourseOfferings(offering_id),
+	room_id integer not null references Rooms,
+	unique(offering_id, sess_num)
 );
 
 create table Customers (
@@ -155,6 +181,14 @@ create table CoursePackages (
 );
 
 create table Buys (
+<<<<<<< HEAD
+	buy_date date not null,
+	redemptions_left integer not null check (redemptions_left >= 0),
+	package_id integer references CoursePackages,
+	cust_id integer references Customers on delete cascade,
+	cc_number varchar(16) not null references CreditCards,
+	primary key(cust_id, package_id)
+=======
   buy_date date not null,
   redemptions_left integer not null,
   package_id integer references CoursePackages,
@@ -162,6 +196,7 @@ create table Buys (
   cc_number varchar(16) not null,
   foreign key (cust_id, cc_number) references CreditCards(cust_id, cc_number) on delete cascade,
   primary key(cust_id, package_id)
+>>>>>>> main
 );
 
 create table Registers (
@@ -174,6 +209,17 @@ create table Registers (
 );
 
 create table Cancels (
+<<<<<<< HEAD
+	cancel_date date not null,
+	refund_amt numeric(10, 2) not null check (refund_amt >= 0),
+	package_credit integer not null check(
+		package_credit = 0
+		or package_credit = 1
+	),
+	cust_id integer references Customers,
+	sess_id integer references Sessions(sess_id),
+	primary key(cust_id, sess_id)
+=======
   cancel_date date not null,
   refund_amt numeric(10, 2) not null,
   package_credit integer not null check(
@@ -183,6 +229,7 @@ create table Cancels (
   cust_id integer references Customers,
   sess_id integer references Sessions(sess_id),
   primary key(cust_id, sess_id)
+>>>>>>> main
 );
 
 create table Redeems (
