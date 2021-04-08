@@ -104,7 +104,7 @@ $$ LANGUAGE PLPGSQL;
 
 DROP TRIGGER IF EXISTS reject_course_offering_changes ON CourseOfferings;
 CREATE TRIGGER reject_course_offering_changes
-BEFORE UPDATE OR DELETE ON COURSEOFFERINGS 
+BEFORE DELETE ON COURSEOFFERINGS 
 FOR EACH ROW EXECUTE FUNCTION reject_operation();
 
 
