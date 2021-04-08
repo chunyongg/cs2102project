@@ -1,6 +1,20 @@
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- TRIGGERS AND THEIR FUNCTIONS (put as a pair!)
+-- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- TRIGGERS AND THEIR FUNCTIONS (put as a pair!)
+
+CREATE OR REPLACE FUNCTION reject_operation()
+RETURNS TRIGGER AS $$ 
+BEGIN 
+    RETURN OLD;
+END;
+$$ LANGUAGE PLPGSQL;
+
+CREATE OR REPLACE FUNCTION reject_course_offering_changes()
+BEFORE UPDATE OR DELETE ON COURSEOFFERINGS 
+FOR EACH ROW EXECUTE FUNCTION reject_operation();
+
+
 CREATE OR REPLACE FUNCTION before_sess_update_check_room_capacity()
 RETURNS TRIGGER AS $$
 DECLARE 
@@ -41,11 +55,6 @@ DROP TRIGGER IF EXISTS before_redeem_check_has_not_registered ON REDEEMS;
 CREATE TRIGGER before_redeem_check_has_not_registered
 BEFORE INSERT ON REGISTERS 
 FOR EACH ROW EXECUTE FUNCTION before_register_check_has_not_registered();
-
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- GLOBAL UTILITY FUNCTIONS (place functions that you think can help everyone here!)
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- TRIGGERS AND THEIR FUNCTIONS (put as a pair!)
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- CHUN YONG'S FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
