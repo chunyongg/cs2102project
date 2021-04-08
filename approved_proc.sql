@@ -14,9 +14,11 @@ RETURNS TRIGGER AS $$
 	END;
 $$ LANGUAGE PLPGSQL;
 
+DROP TRIGGER IF EXISTS after_redeem_session_trigger ON Redeems;
 CREATE TRIGGER after_redeem_session_trigger
 AFTER INSERT ON Redeems
 FOR EACH ROW EXECUTE FUNCTION after_redeem_session_func();
+
 CREATE OR REPLACE FUNCTION get_manager_areas(IN emp_id integer)
 RETURNS TABLE(course_area text) -- total course areas
 AS $$
