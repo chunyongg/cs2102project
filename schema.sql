@@ -12,7 +12,6 @@ create table Employees (
 );
 
 create table FullTimeEmployees (
-<<<<<<< HEAD
 	monthly_salary numeric(10, 2) not null check (monthly_salary > 0),
 	emp_id integer primary key references Employees on delete cascade
 );
@@ -30,37 +29,19 @@ create table FullTimeSalary(
 	primary key(payment_date, emp_id)
 );
 
+Create table PartTimeHoursWorked (
+	hours_worked integer DEFAULT 0 check (hours_worked >= 0),
+	month_year date check (date_part('day', month_year) = 1),
+	emp_id integer references PartTimeEmployees,
+	primary key (month_year, emp_id)
+);
+
 create table PartTimeSalary(
 	salary_amt numeric(10, 2) not null check (salary_amt >= 0),
 	payment_date date,
 	hours integer not null check (hours >= 0),
 	emp_id integer references PartTimeEmployees,
 	primary key(payment_date, emp_id)
-=======
-  monthly_salary numeric(10, 2) not null,
-  emp_id integer primary key references Employees on delete cascade
-);
-
-create table PartTimeEmployees(
-  hourly_rate numeric(10, 2) not null,
-  emp_id integer primary key references Employees on delete cascade
-);
-
-create table FullTimeSalary(
-  salary_amt numeric(10, 2) not null,
-  payment_date date,
-  days integer not null,
-  emp_id integer references FullTimeEmployees,
-  primary key(payment_date, emp_id)
-);
-
-create table PartTimeSalary(
-  salary_amt numeric(10, 2) not null,
-  payment_date date,
-  hours integer not null,
-  emp_id integer references PartTimeEmployees,
-  primary key(payment_date, emp_id)
->>>>>>> main
 );
 
 create table Administrators(
@@ -181,22 +162,12 @@ create table CoursePackages (
 );
 
 create table Buys (
-<<<<<<< HEAD
 	buy_date date not null,
 	redemptions_left integer not null check (redemptions_left >= 0),
 	package_id integer references CoursePackages,
 	cust_id integer references Customers on delete cascade,
 	cc_number varchar(16) not null references CreditCards,
 	primary key(cust_id, package_id)
-=======
-  buy_date date not null,
-  redemptions_left integer not null,
-  package_id integer references CoursePackages,
-  cust_id integer,
-  cc_number varchar(16) not null,
-  foreign key (cust_id, cc_number) references CreditCards(cust_id, cc_number) on delete cascade,
-  primary key(cust_id, package_id)
->>>>>>> main
 );
 
 create table Registers (
@@ -209,7 +180,6 @@ create table Registers (
 );
 
 create table Cancels (
-<<<<<<< HEAD
 	cancel_date date not null,
 	refund_amt numeric(10, 2) not null check (refund_amt >= 0),
 	package_credit integer not null check(
@@ -219,17 +189,6 @@ create table Cancels (
 	cust_id integer references Customers,
 	sess_id integer references Sessions(sess_id),
 	primary key(cust_id, sess_id)
-=======
-  cancel_date date not null,
-  refund_amt numeric(10, 2) not null,
-  package_credit integer not null check(
-    package_credit = 0
-    or package_credit = 1
-  ),
-  cust_id integer references Customers,
-  sess_id integer references Sessions(sess_id),
-  primary key(cust_id, sess_id)
->>>>>>> main
 );
 
 create table Redeems (
@@ -253,6 +212,8 @@ CREATE OR REPLACE VIEW SessionParticipants AS
 <<<<<<< HEAD
 <<<<<<< HEAD
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+<<<<<<< HEAD
+=======
 -- TRIGGER FUNCTIONS
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 =======
@@ -291,3 +252,4 @@ CREATE OR REPLACE VIEW ManagerDetails AS
     from Managers natural left join Employees
     order by emp_name asc;
 >>>>>>> 8ca4c79a121feb097051bb57ccbb6da86109c7a2
+>>>>>>> main
