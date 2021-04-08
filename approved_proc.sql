@@ -57,10 +57,12 @@ BEGIN
 end;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS register_session_limit_trigger ON REGISTERS;
 CREATE TRIGGER register_session_limit_trigger
 BEFORE INSERT ON Registers
 FOR EACH ROW EXECUTE FUNCTION course_session_limit();
 
+DROP TRIGGER IF EXISTS redeem_session_limit_trigger ON REDEEMS;
 CREATE TRIGGER redeem_session_limit_trigger
 BEFORE INSERT ON Redeems
 FOR EACH ROW EXECUTE FUNCTION course_session_limit();
@@ -90,10 +92,12 @@ BEGIN
 end;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS register_exceeded_session_trigger ON Registers;
 CREATE TRIGGER register_exceeded_session_trigger
 BEFORE INSERT OR UPDATE ON Registers
 FOR EACH ROW EXECUTE FUNCTION seating_capacity_limit();
 
+DROP TRIGGER IF EXISTS redeem_exceeded_session_trigger ON REDEEMS;
 CREATE TRIGGER redeem_exceeded_session_trigger
 BEFORE INSERT OR UPDATE ON Redeems
 FOR EACH ROW EXECUTE FUNCTION seating_capacity_limit();
@@ -122,6 +126,7 @@ BEGIN
 end;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS buy_excessive_active_package_trigger ON BUYS;
 CREATE TRIGGER buy_excessive_active_package_trigger
 BEFORE INSERT ON Buys
 FOR EACH ROW EXECUTE FUNCTION active_package_limit();
@@ -145,6 +150,7 @@ begin
 end;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS redeem_session_trigger ON REDEEMS;
 CREATE TRIGGER redeem_session_trigger
 BEFORE INSERT ON Redeems
 FOR EACH ROW EXECUTE FUNCTION redeem_sess();
@@ -162,6 +168,7 @@ BEGIN
 end;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_cc_trigger ON CreditCards;
 CREATE TRIGGER update_cc_trigger
 BEFORE INSERT or UPDATE ON CreditCards
 FOR EACH ROW EXECUTE FUNCTION update_cc();
@@ -185,6 +192,7 @@ begin
 end;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS buy_package_trigger ON Buys;
 CREATE TRIGGER buy_package_trigger
 BEFORE INSERT ON Buys
 FOR EACH ROW EXECUTE FUNCTION check_sale_period();
@@ -211,10 +219,12 @@ begin
 end;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS change_reg_session_trigger ON REGISTERS;
 CREATE TRIGGER change_reg_session_trigger
 BEFORE UPDATE ON Registers
 FOR EACH ROW EXECUTE FUNCTION check_session_period();
 
+DROP TRIGGER IF EXISTS change_redeem_session_trigger ON REDEEMS;
 CREATE TRIGGER change_redeem_session_trigger
 BEFORE UPDATE ON Redeems
 FOR EACH ROW EXECUTE FUNCTION check_session_period();
@@ -347,14 +357,7 @@ begin
         end if;
     end if;
 end;
-$$ language plpgsql
-
-CREATE OR REPLACE VIEW SessionParticipants AS
-    select cust_id, sess_id, null as package_id
-    from Registers
-    union
-    select cust_id, sess_id, package_id
-    from Redeems;
+$$ language plpgsql;
 
 -- Self created function for F19 & F20
 -- check if registered for any session for that offering, return boolean
@@ -795,6 +798,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+
+DROP TRIGGER IF EXISTS check_session_end_trigger ON SESSIONS;
 CREATE TRIGGER check_session_end_trigger
 BEFORE INSERT OR UPDATE ON Sessions
 FOR EACH ROW EXECUTE FUNCTION check_session_end();
@@ -822,6 +827,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS check_ft_payment_date_trigger ON FullTimeSalary;
 CREATE TRIGGER check_ft_payment_date_trigger
 BEFORE INSERT ON FullTimeSalary
 FOR EACH ROW EXECUTE FUNCTION check_ft_salary_payment();
@@ -848,6 +854,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS check_pt_payment_date_trigger ON PartTimeSalary;
 CREATE TRIGGER check_pt_payment_date_trigger
 BEFORE INSERT ON PartTimeSalary
 FOR EACH ROW EXECUTE FUNCTION check_pt_salary_payment();
@@ -900,8 +907,9 @@ AND (
         (get_emp_status(Specializations.emp_id) = 'Part Time' AND get_monthly_hours(Specializations.emp_id, DATE_PART('month', day), DATE_PART('year', day)) + duration <= 30) 
         OR get_emp_status(Specializations.emp_id) = 'Full Time'
 )
-ORDER BY (emp_id, day) ASC;
+ORDER BY emp_id, day;
 $$ LANGUAGE sql;
+
 -- F15
 CREATE OR REPLACE FUNCTION get_available_course_offerings ()
 RETURNS TABLE(c_title TEXT, c_area TEXT, s_date DATE, e_date DATE, r_deadline DATE, c_fee NUMERIC(10,2), num_remaining INTEGER) AS $$
@@ -912,13 +920,14 @@ RETURNS TABLE(c_title TEXT, c_area TEXT, s_date DATE, e_date DATE, r_deadline DA
 		NATURAL RIGHT JOIN CourseOfferings
 		GROUP BY CourseOfferings.offering_id
     )
-    SELECT title, course_area, start_date, end_date, registration_deadline, fees, (CourseOfferings.seating_capacity - count) AS remaining
+    SELECT title, course_area, 
+    start_date, end_date, registration_deadline, fees, (CourseOfferings.seating_capacity - count) AS remaining
     FROM CourseOfferings
     INNER JOIN Courses
     ON CourseOfferings.course_id = Courses.course_id
 	NATURAL JOIN RegistrationCount
     WHERE CURRENT_DATE <= registration_deadline
-    AND remaining > 0
+    AND (CourseOfferings.seating_capacity - count) > 0
     ORDER BY (registration_deadline, title) ASC;
 $$ LANGUAGE sql;
 -- F16
@@ -1031,7 +1040,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-=======
 
 CREATE OR REPLACE FUNCTION end_of_month(month date)
 RETURNS DATE as $$
@@ -1449,6 +1457,7 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
+DROP TRIGGER IF EXISTS check_admin_status ON CourseOfferings;
 CREATE TRIGGER check_admin_status 
 BEFORE INSERT OR UPDATE ON COURSEOFFERINGS 
 FOR EACH ROW EXECUTE FUNCTION check_admin_status();
