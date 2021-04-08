@@ -162,12 +162,13 @@ create table CoursePackages (
 );
 
 create table Buys (
-	buy_date date not null,
-	redemptions_left integer not null check (redemptions_left >= 0),
-	package_id integer references CoursePackages,
-	cust_id integer references Customers on delete cascade,
-	cc_number varchar(16) not null references CreditCards,
-	primary key(cust_id, package_id)
+  buy_date date not null,
+  redemptions_left integer not null check (redemptions_left >= 0),
+  package_id integer references CoursePackages,
+  cust_id integer,
+  cc_number varchar(16) not null,
+  foreign key (cust_id, cc_number) references CreditCards(cust_id, cc_number) on delete cascade,
+  primary key(cust_id, package_id)
 );
 
 create table Registers (
