@@ -250,7 +250,7 @@ CREATE OR REPLACE FUNCTION before_add_offering()
 RETURNS TRIGGER AS $$
 BEGIN 
     IF NEW.launch_date < CURRENT_DATE THEN 
-        RAISE EXCEPTION 'Registration deadline must not be in the past';
+        RAISE EXCEPTION 'Launch date must not be in the past';
     END IF;
     RETURN NEW;
 END;
