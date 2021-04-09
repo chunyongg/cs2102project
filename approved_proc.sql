@@ -286,6 +286,10 @@ IF (OLD.depart_date IS NOT NULL AND NEW.depart_date <> OLD.depart_date) THEN
     RAISE EXCEPTION 'Employee already removed';
 END IF;
 
+IF (OLD.join_date > CURRENT_DATE) THEN 
+    RAISE EXCEPTION 'Employee not yet joined';
+END IF;
+
 IF EXISTS (SELECT 1 FROM CourseAreas WHERE manager_id = OLD.emp_id) THEN 
     RAISE EXCEPTION 'A manager managing course areas cannot be removed';
 END IF;
