@@ -108,7 +108,8 @@ create table Sessions (
 	sess_id serial primary key,
 	sess_num integer not null check (sess_num > 0),
 	start_time timestamp not null check(
-		start_time < end_time
+		date_trunc('day', start_time) = sess_date
+		and start_time < end_time
 		and date_part('hour', start_time) >= 9
 		and date_part('hour', start_time) not in (12, 13)
 		and extract(
@@ -118,7 +119,8 @@ create table Sessions (
 		) in (1, 2, 3, 4, 5)
 	),
 	end_time timestamp not null check (
-		end_time > start_time
+		date_trunc('day', end_time) = sess_date
+		and end_time > start_time
 		and date_part('hour', end_time) <= 18
 		and date_part('hour', end_time) not in (13, 14)
 		and extract(

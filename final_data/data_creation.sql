@@ -1,3 +1,5 @@
+-- alter sequence Table_attribute_seq restart with 1 -- (resets serial number) e.g. ALTER SEQUENCE employees_emp_id_seq RESTART WITH 1
+
 delete from Employees;
 alter sequence Employees_emp_id_seq restart with 1;
 CALL add_employee('full_time', 'Sarah Tan', 'Blk 123 Ang Mo Kio', 90001010, 'sarah.tan@gmail.com', 3000, '2020-05-01', 'administrator', '{}');
@@ -21,6 +23,19 @@ CALL add_employee('full_time', 'Joe Doe', '91 Defu Lane', 92803670, 'joe.doe@gma
 CALL add_employee('full_time', 'Patrick Loh', '315 Outram Road', 83235333, 'patrick.loh@gmail.com', 4000, '2020-01-01', 'manager', '{Software Engineering}');
 CALL add_employee('full_time', 'Joella Tan', '370H Alexandra Road', 94766173, 'joella.tan@gmail.com', 4000, '2020-01-01', 'manager', '{Data Analytics}');
 CALL add_employee('full_time', 'Brenda Wong', '22 Kallang Ave', 91733252, 'brenda.wong@gmail.com', 4000, '2019-02-01', 'manager', '{Programming Languages}');
+
+insert into CourseAreas values
+('Algorithms and Theory', 11),      -- course area 1  manager_id = 11
+('Artificial Intelligence', 12),    -- course area 2  manager_id = 12
+('Game Design', 13),                -- course area 3  manager_id = 13
+('Computer Security', 14),          -- course area 4  manager_id = 14
+('Database Systems', 15),           -- course area 5  manager_id = 15
+('Computer Networking', 16),        -- course area 6  manager_id = 16
+('Parallel Computing', 17),         -- course area 7  manager_id = 17
+('Software Engineering', 18),       -- course area 8  manager_id = 18
+('Data Analytics', 19),             -- course area 9  manager_id = 19
+('Programming Languages', 20);      -- course area 10 manager_id = 20
+
 
 CALL add_employee('full_time', 'Chloe Lim', '20 Prince Edward Road', 91733252, 'chloe.lim@gmail.com', 5000, '2020-02-01', 'instructor', '{Algorithms and Theory, Artificial Intelligence}');
 CALL add_employee('full_time', 'Benjamin Kok', '81 Marine Parade Central', 84470579, 'benjamin.kok@gmail.com', 5000, '2020-06-01', 'instructor', '{Game Design, Computer Security}');
@@ -63,20 +78,6 @@ CALL remove_employee(33, '2021-05-01');
 CALL remove_employee(38, '2021-04-01');
 CALL remove_employee(40, '2021-01-01');
 
--- alter sequence Table_attribute_seq restart with 1 -- (resets serial number) e.g. ALTER SEQUENCE employees_emp_id_seq RESTART WITH 1
-
-insert into CourseAreas values
-('Algorithms and Theory', 11),      -- course area 1  manager_id = 11
-('Artificial Intelligence', 12),    -- course area 2  manager_id = 12
-('Game Design', 13),                -- course area 3  manager_id = 13
-('Computer Security', 14),          -- course area 4  manager_id = 14
-('Database Systems', 15),           -- course area 5  manager_id = 15
-('Computer Networking', 16),        -- course area 6  manager_id = 16
-('Parallel Computing', 17),         -- course area 7  manager_id = 17
-('Software Engineering', 18),       -- course area 8  manager_id = 18
-('Data Analytics', 19),             -- course area 9  manager_id = 19
-('Programming Languages', 20);      -- course area 10 manager_id = 20
-
 alter sequence Courses_course_id_seq restart with 1;
 CALL add_course('Algorithms', 'Learn all about algorithms!', 'Algorithms and Theory', 1);
 CALL add_course('Artificial Intelligence', 'Learn about AI', 'Artificial Intelligence', 2);
@@ -89,6 +90,7 @@ CALL add_course('Software Engineering', 'Learn about software engineering', 'Sof
 CALL add_course('Data Analytics', 'Learn about data analytics', 'Data Analytics', 3);
 CALL add_course('Programming Languages', 'Learn about programming', 'Programming Languages', 1);
 
+alter sequence Rooms_room_id_seq restart with 1;
 insert into Rooms values
 (default, '01-01', 20),
 (default, '01-02', 20),
@@ -198,20 +200,21 @@ CALL add_course_offering(20, 8 , 100, 10, '2021-03-21',
 '2021-05-21', 10 , '{"(2021-06-01,\"2021-06-01 10:00:00\",6)"}' :: SessionInfo[]);
 CALL add_course_offering(21, 9 , 100, 10, '2021-03-22', 
 '2021-05-22', 10 , '{"(2021-06-02,\"2021-06-02 15:00:00\",23)"}' :: SessionInfo[]);
-CALL add_course_offering(22, 10 , 100, 10, '2021-03-23', 
+CALL add_course_offering(22, 10 , 100, 10, '2021-03-24', 
 '2021-05-23', 2 , '{"(2021-06-03,\"2021-06-03 15:00:00\",24)"}' :: SessionInfo[]);
 
 -- Create the packages 
+alter sequence CoursePackages_package_id_seq restart with 1;
 CALL add_course_package('3-3 Sale Package', 1, '2021-03-03', '2021-03-03', 100);
-CALL add_course_package('Flash Sale', 2, '2021-04-01', '2021-04-15', 150);
-CALL add_course_package('Trial', 3, '2021-04-01', '2021-05-01', 200);
-CALL add_course_package('Beginner Friendly', 4, '2021-04-01', '2021-06-01', 300);
-CALL add_course_package('Best Value', 6, '2021-04-01', '2021-07-01', 500);
-CALL add_course_package('Ultimate Edition', 10, '2021-04-01', '2021-08-01', 1000);
-CALL add_course_package('Intermediate Package', 15, '2021-04-01', '2021-09-01', 1300);
-CALL add_course_package('Comprehensive Package', 20, '2021-04-01', '2021-10-01', 2000);
-CALL add_course_package('Expert Package', 30, '2021-04-01', '2021-11-01', 2500);
-CALL add_course_package('Unlimited', 9999, '2021-04-01', '2021-12-01', 10000);
+CALL add_course_package('Flash Sale', 5, '2021-04-01', '2021-04-15', 150);
+CALL add_course_package('Trial', 6, '2021-04-01', '2021-05-01', 200);
+CALL add_course_package('Beginner Friendly', 7, '2021-04-01', '2021-06-01', 300);
+CALL add_course_package('Best Value', 8, '2021-04-01', '2021-07-01', 500);
+CALL add_course_package('Ultimate Edition', 9 , '2021-04-01', '2021-08-01', 1000);
+CALL add_course_package('Intermediate Package', 10, '2021-04-01', '2021-09-01', 1300);
+CALL add_course_package('Comprehensive Package', 11, '2021-04-01', '2021-10-01', 2000);
+CALL add_course_package('Expert Package', 12, '2021-04-01', '2021-11-01', 2500);
+CALL add_course_package('Unlimited', 13, '2021-04-01', '2021-12-01', 10000);
 
 -- Buy the packages
 CALL buy_course_package(1, 2);

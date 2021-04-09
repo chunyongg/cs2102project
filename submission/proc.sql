@@ -246,20 +246,20 @@ CREATE TRIGGER check_seating_capacity
 BEFORE INSERT ON CourseOfferings
 FOR EACH ROW EXECUTE FUNCTION check_courseofferings_seating_capacity();
 
-CREATE OR REPLACE FUNCTION before_add_offering()
-RETURNS TRIGGER AS $$
-BEGIN 
-    IF NEW.launch_date < CURRENT_DATE THEN 
-        RAISE EXCEPTION 'Launch date must not be in the past';
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE PLPGSQL;
+-- CREATE OR REPLACE FUNCTION before_add_offering()
+-- RETURNS TRIGGER AS $$
+-- BEGIN 
+--     IF NEW.launch_date < CURRENT_DATE THEN 
+--         RAISE EXCEPTION 'Launch date must not be in the past';
+--     END IF;
+--     RETURN NEW;
+-- END;
+-- $$ LANGUAGE PLPGSQL;
 
-DROP TRIGGER IF EXISTS before_add_offering_check_date ON CourseOfferings;
-CREATE TRIGGER before_add_offering_check_date 
-BEFORE INSERT OR UPDATE ON CourseOfferings
-FOR EACH ROW EXECUTE FUNCTION before_add_offering();
+-- DROP TRIGGER IF EXISTS before_add_offering_check_date ON CourseOfferings;
+-- CREATE TRIGGER before_add_offering_check_date 
+-- BEFORE INSERT OR UPDATE ON CourseOfferings
+-- FOR EACH ROW EXECUTE FUNCTION before_add_offering();
 
 CREATE OR REPLACE FUNCTION check_is_not_admin_or_manager()
 RETURNS TRIGGER AS $$
