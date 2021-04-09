@@ -531,7 +531,7 @@ BEGIN
     SELECT offering_id INTO oid FROM Sessions WHERE sess_id = NEW.sess_id;
     SELECT launch_date, registration_deadline INTO l_date, r_deadline FROM CourseOfferings 
     WHERE offering_id = oid;
-    IF l_date < CURRENT_DATE THEN 
+    IF l_date > CURRENT_DATE THEN 
         RAISE EXCEPTION 'Course offering not launched yet';
     END IF;
     IF r_deadline < CURRENT_DATE THEN 
