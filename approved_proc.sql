@@ -355,10 +355,10 @@ DECLARE
 BEGIN 
     SELECT join_date, depart_date INTO j_date, d_date FROM Employees 
     WHERE emp_id = NEW.admin_id;
-        IF d_date < CURRENT_DATE THEN 
-        RAISE EXCEPTION 'Administrator departed';
+        IF d_date < NEW.registration_deadline THEN 
+        RAISE EXCEPTION 'Administrator departed before registration deadline';
     END IF;
-    IF j_date > CURRENT_DATE THEN 
+    IF j_date > NEW.launch_date THEN 
         RAISE EXCEPTION 'Administrator not yet joined';
     END IF;
     RETURN NEW;
