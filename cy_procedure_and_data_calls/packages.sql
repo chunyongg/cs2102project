@@ -1,5 +1,3 @@
-CREATE OR REPLACE PROCEDURE add_course_package (package_name TEXT, num_free_registrations INT, sale_start_date DATE, sale_end_date DATE, price NUMERIC(10, 2))
-
 -- Create the packages 
 CALL add_course_package('3-3 Sale Package', 1, '2021-03-03', '2021-03-03', 100);
 CALL add_course_package('Flash Sale', 1, '2021-04-01', '2021-04-15', 150);
