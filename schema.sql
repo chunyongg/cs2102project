@@ -24,7 +24,7 @@ create table PartTimeEmployees(
 create table FullTimeSalary(
 	salary_amt numeric(10, 2) not null check (salary_amt >= 0),
 	payment_date date,
-	days integer not null check (days >= 0),
+	days integer not null check (days >= 0 and days <= 31),
 	emp_id integer references FullTimeEmployees,
 	primary key(payment_date, emp_id)
 );
@@ -77,7 +77,7 @@ create table PartTimeInstructors(
 
 create table Courses (
 	course_id serial unique,
-	duration integer not null check (duration > 0),
+	duration integer not null check (duration > 0 and duration <= 4),
 	title text unique not null,
 	description text,
 	course_area text references CourseAreas on delete cascade,

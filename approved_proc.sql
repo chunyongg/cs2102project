@@ -250,7 +250,7 @@ CREATE OR REPLACE FUNCTION before_add_offering()
 RETURNS TRIGGER AS $$
 BEGIN 
     IF NEW.launch_date < CURRENT_DATE THEN 
-        RAISE EXCEPTION 'Registration deadline must not be in the past';
+        RAISE EXCEPTION 'Launch date must not be in the past';
     END IF;
     RETURN NEW;
 END;
@@ -284,6 +284,10 @@ temp_date date;
 BEGIN 
 IF (OLD.depart_date IS NOT NULL AND NEW.depart_date <> OLD.depart_date) THEN
     RAISE EXCEPTION 'Employee already removed';
+END IF;
+
+IF (OLD.join_date > CURRENT_DATE) THEN 
+    RAISE EXCEPTION 'Employee not yet joined';
 END IF;
 
 IF EXISTS (SELECT 1 FROM CourseAreas WHERE manager_id = OLD.emp_id) THEN 
@@ -355,10 +359,10 @@ DECLARE
 BEGIN 
     SELECT join_date, depart_date INTO j_date, d_date FROM Employees 
     WHERE emp_id = NEW.admin_id;
-        IF d_date < CURRENT_DATE THEN 
-        RAISE EXCEPTION 'Administrator departed';
+        IF d_date < NEW.registration_deadline THEN 
+        RAISE EXCEPTION 'Administrator departed before registration deadline';
     END IF;
-    IF j_date > CURRENT_DATE THEN 
+    IF j_date > NEW.launch_date THEN 
         RAISE EXCEPTION 'Administrator not yet joined';
     END IF;
     RETURN NEW;
@@ -527,7 +531,7 @@ BEGIN
     SELECT offering_id INTO oid FROM Sessions WHERE sess_id = NEW.sess_id;
     SELECT launch_date, registration_deadline INTO l_date, r_deadline FROM CourseOfferings 
     WHERE offering_id = oid;
-    IF l_date < CURRENT_DATE THEN 
+    IF l_date > CURRENT_DATE THEN 
         RAISE EXCEPTION 'Course offering not launched yet';
     END IF;
     IF r_deadline < CURRENT_DATE THEN 
@@ -676,9 +680,9 @@ BEGIN
         RAISE EXCEPTION 'Payment date is not at end of the month';
     END IF;
 	IF (_number_of_payment_dates > 1) THEN
-        RAISE EXCEPTION 'Salaries are paid more than once for this month';
+        RAISE EXCEPTION 'Full-time salaries are paid more than once for this month';
 	END IF;
-    RETURN NULL;
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -703,9 +707,9 @@ BEGIN
         RAISE EXCEPTION 'Payment date is not at end of the month';
     END IF;
 	IF (_number_of_payment_dates > 1) THEN
-        RAISE EXCEPTION 'Salaries are paid more than once for this month';
+        RAISE EXCEPTION 'Part-time salaries are paid more than once for this month';
 	END IF;
-    RETURN NULL;
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -981,6 +985,10 @@ BEGIN
 
     old_hours_worked := get_difference_in_hours(OLD.end_time, OLD.start_time);
     new_hours_worked := get_difference_in_hours(NEW.end_time, NEW.start_time);
+
+    IF (NOT EXISTS (SELECT 1 FROM PartTimeInstructors WHERE emp_id = inst_id)) THEN 
+        RETURN NULL;
+    END IF;
 
     INSERT INTO PartTimeHoursWorked 
     VALUES (new_hours_worked, date_trunc('month', NEW.sess_date), inst_id)
