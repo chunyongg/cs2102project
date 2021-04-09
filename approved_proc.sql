@@ -982,6 +982,10 @@ BEGIN
     old_hours_worked := get_difference_in_hours(OLD.end_time, OLD.start_time);
     new_hours_worked := get_difference_in_hours(NEW.end_time, NEW.start_time);
 
+    IF (NOT EXISTS (SELECT 1 FROM PartTimeInstructors WHERE emp_id = inst_id)) THEN 
+        RETURN NULL;
+    END IF;
+
     INSERT INTO PartTimeHoursWorked 
     VALUES (new_hours_worked, date_trunc('month', NEW.sess_date), inst_id)
     ON CONFLICT (month_year, emp_id) DO UPDATE SET hours_worked = EXCLUDED.hours_worked + new_hours_worked;
