@@ -169,7 +169,6 @@ create table Buys (
   package_id integer references CoursePackages,
   cust_id integer,
   cc_number varchar(16) not null,
-  foreign key (cust_id, cc_number) references CreditCards(cust_id, cc_number) on delete cascade,
   primary key(cust_id, package_id)
 );
 
@@ -178,7 +177,6 @@ create table Registers (
   cust_id integer,
   sess_id integer references Sessions(sess_id),
   cc_number varchar(16) not null,
-  foreign key (cust_id, cc_number) references CreditCards(cust_id, cc_number) on delete cascade,
   primary key(cust_id, sess_id)
 );
 
