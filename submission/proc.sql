@@ -2050,7 +2050,7 @@ $$ LANGUAGE plpgsql;
 	AND sess_num = session_number;
 	$$ LANGUAGE SQL;
 
-		-- F24: add_session
+-- F24: add_session
 
 	CREATE OR REPLACE FUNCTION GETSESSIONEND(SESSION_START TIMESTAMP, OID integer) RETURNS TIMESTAMP AS $$
 	DECLARE

@@ -226,6 +226,9 @@ INSERT INTO parttimeemployees VALUES (3000.00, 38);
 INSERT INTO parttimeemployees VALUES (3000.00, 39);
 INSERT INTO parttimeemployees VALUES (3000.00, 40);
 
+INSERT INTO parttimehoursworked VALUES (3, '2021-06-01', 32);
+INSERT INTO parttimehoursworked VALUES (2, '2021-04-01', 32);
+
 INSERT INTO parttimeinstructors VALUES (31);
 INSERT INTO parttimeinstructors VALUES (32);
 INSERT INTO parttimeinstructors VALUES (33);
@@ -236,7 +239,6 @@ INSERT INTO parttimeinstructors VALUES (37);
 INSERT INTO parttimeinstructors VALUES (38);
 INSERT INTO parttimeinstructors VALUES (39);
 INSERT INTO parttimeinstructors VALUES (40);
-
 
 INSERT INTO specializations VALUES (21, 'Algorithms and Theory');
 INSERT INTO specializations VALUES (21, 'Artificial Intelligence');
@@ -332,28 +334,28 @@ INSERT INTO rooms VALUES (25, '05-05', 40);
 
 alter sequence Rooms_room_id_seq restart with 26;
 
-INSERT INTO courseofferings VALUES (1, '2021-03-23', '2021-06-02', '2021-06-02', '2021-05-23', 10, 100.00, 40, 1, 1);
-INSERT INTO courseofferings VALUES (2, '2021-03-23', '2021-06-03', '2021-06-03', '2021-05-23', 11, 100.00, 40, 2, 2);
-INSERT INTO courseofferings VALUES (3, '2021-03-23', '2021-06-04', '2021-06-04', '2021-05-23', 12, 100.00, 40, 3, 3);
-INSERT INTO courseofferings VALUES (4, '2021-03-23', '2021-06-02', '2021-06-02', '2021-05-23', 13, 100.00, 40, 4, 4);
-INSERT INTO courseofferings VALUES (5, '2021-03-23', '2021-06-03', '2021-06-03', '2021-05-23', 14, 100.00, 40, 5, 5);
-INSERT INTO courseofferings VALUES (6, '2021-03-23', '2021-06-04', '2021-06-04', '2021-05-23', 15, 100.00, 50, 6, 6);
-INSERT INTO courseofferings VALUES (7, '2021-03-23', '2021-06-07', '2021-06-07', '2021-05-23', 16, 100.00, 50, 6, 7);
-INSERT INTO courseofferings VALUES (8, '2021-03-23', '2021-06-08', '2021-06-08', '2021-05-23', 17, 100.00, 50, 8, 8);
-INSERT INTO courseofferings VALUES (9, '2021-03-23', '2021-06-09', '2021-06-09', '2021-05-23', 18, 100.00, 50, 6, 9);
-INSERT INTO courseofferings VALUES (10, '2021-03-23', '2021-06-02', '2021-06-02', '2021-05-23', 19, 100.00, 50, 10, 10);
-INSERT INTO courseofferings VALUES (11, '2021-03-08', '2021-05-19', '2021-05-19', '2021-05-08', 10, 100.00, 80, 1, 1);
-INSERT INTO courseofferings VALUES (12, '2021-03-09', '2021-05-20', '2021-05-20', '2021-05-09', 10, 100.00, 80, 1, 1);
-INSERT INTO courseofferings VALUES (13, '2021-03-10', '2021-05-21', '2021-05-21', '2021-05-10', 10, 100.00, 40, 1, 2);
-INSERT INTO courseofferings VALUES (14, '2021-03-13', '2021-05-24', '2021-05-24', '2021-05-13', 10, 100.00, 40, 1, 3);
-INSERT INTO courseofferings VALUES (15, '2021-03-14', '2021-05-25', '2021-05-25', '2021-05-14', 10, 100.00, 50, 1, 4);
-INSERT INTO courseofferings VALUES (16, '2021-03-15', '2021-05-26', '2021-05-26', '2021-05-15', 10, 100.00, 70, 1, 4);
-INSERT INTO courseofferings VALUES (17, '2021-03-16', '2021-05-27', '2021-05-27', '2021-05-16', 10, 100.00, 60, 5, 5);
-INSERT INTO courseofferings VALUES (18, '2021-03-20', '2021-05-31', '2021-05-31', '2021-05-20', 10, 100.00, 40, 3, 6);
-INSERT INTO courseofferings VALUES (19, '2021-03-20', '2021-05-31', '2021-05-31', '2021-05-20', 10, 100.00, 40, 4, 7);
-INSERT INTO courseofferings VALUES (20, '2021-03-21', '2021-06-01', '2021-06-01', '2021-05-21', 10, 100.00, 50, 10, 8);
-INSERT INTO courseofferings VALUES (21, '2021-03-22', '2021-06-02', '2021-06-02', '2021-05-22', 10, 100.00, 80, 10, 9);
-INSERT INTO courseofferings VALUES (22, '2021-03-24', '2021-06-03', '2021-06-03', '2021-05-23', 10, 100.00, 80, 2, 10);
+INSERT INTO courseofferings VALUES (1, '2021-03-23', '2021-06-02', '2021-06-02', '2021-05-23', 10, 100.00, 20, 1, 1);
+INSERT INTO courseofferings VALUES (3, '2021-03-23', '2021-06-04', '2021-06-04', '2021-05-23', 12, 100.00, 20, 3, 3);
+INSERT INTO courseofferings VALUES (4, '2021-03-23', '2021-06-02', '2021-06-02', '2021-05-23', 13, 100.00, 20, 4, 4);
+INSERT INTO courseofferings VALUES (5, '2021-03-23', '2021-06-03', '2021-06-03', '2021-05-23', 14, 100.00, 20, 5, 5);
+INSERT INTO courseofferings VALUES (6, '2021-03-23', '2021-06-04', '2021-06-04', '2021-05-23', 15, 100.00, 25, 6, 6);
+INSERT INTO courseofferings VALUES (7, '2021-03-23', '2021-06-07', '2021-06-07', '2021-05-23', 16, 100.00, 25, 6, 7);
+INSERT INTO courseofferings VALUES (8, '2021-03-23', '2021-06-08', '2021-06-08', '2021-05-23', 17, 100.00, 25, 8, 8);
+INSERT INTO courseofferings VALUES (9, '2021-03-23', '2021-06-09', '2021-06-09', '2021-05-23', 18, 100.00, 25, 6, 9);
+INSERT INTO courseofferings VALUES (10, '2021-03-23', '2021-06-02', '2021-06-02', '2021-05-23', 19, 100.00, 25, 10, 10);
+INSERT INTO courseofferings VALUES (11, '2021-03-08', '2021-05-19', '2021-05-19', '2021-05-08', 10, 100.00, 40, 1, 1);
+INSERT INTO courseofferings VALUES (12, '2021-03-09', '2021-05-20', '2021-05-20', '2021-05-09', 10, 100.00, 40, 1, 1);
+INSERT INTO courseofferings VALUES (13, '2021-03-10', '2021-05-21', '2021-05-21', '2021-05-10', 10, 100.00, 20, 1, 2);
+INSERT INTO courseofferings VALUES (14, '2021-03-13', '2021-05-24', '2021-05-24', '2021-05-13', 10, 100.00, 20, 1, 3);
+INSERT INTO courseofferings VALUES (15, '2021-03-14', '2021-05-25', '2021-05-25', '2021-05-14', 10, 100.00, 25, 1, 4);
+INSERT INTO courseofferings VALUES (16, '2021-03-15', '2021-05-26', '2021-05-26', '2021-05-15', 10, 100.00, 35, 1, 4);
+INSERT INTO courseofferings VALUES (17, '2021-03-16', '2021-05-27', '2021-05-27', '2021-05-16', 10, 100.00, 30, 5, 5);
+INSERT INTO courseofferings VALUES (18, '2021-03-20', '2021-05-31', '2021-05-31', '2021-05-20', 10, 100.00, 20, 3, 6);
+INSERT INTO courseofferings VALUES (19, '2021-03-20', '2021-05-31', '2021-05-31', '2021-05-20', 10, 100.00, 20, 4, 7);
+INSERT INTO courseofferings VALUES (20, '2021-03-21', '2021-06-01', '2021-06-01', '2021-05-21', 10, 100.00, 25, 10, 8);
+INSERT INTO courseofferings VALUES (21, '2021-03-22', '2021-06-02', '2021-06-02', '2021-05-22', 10, 100.00, 40, 10, 9);
+INSERT INTO courseofferings VALUES (22, '2021-03-24', '2021-06-03', '2021-06-03', '2021-05-23', 10, 100.00, 40, 2, 10);
+INSERT INTO courseofferings VALUES (2, '2021-03-23', '2021-06-03', '2021-06-03', '2021-05-23', 11, 100.00, 45, 2, 2);
 
 INSERT INTO sessions VALUES (1, 1, '2021-06-02 11:00:00', '2021-06-02 12:00:00', '2021-06-02', '2021-05-26', 21, 1, 1);
 INSERT INTO sessions VALUES (2, 1, '2021-06-03 10:00:00', '2021-06-03 12:00:00', '2021-06-03', '2021-05-27', 21, 2, 2);
@@ -377,8 +379,9 @@ INSERT INTO sessions VALUES (19, 1, '2021-05-31 14:00:00', '2021-05-31 15:00:00'
 INSERT INTO sessions VALUES (20, 1, '2021-06-01 10:00:00', '2021-06-01 12:00:00', '2021-06-01', '2021-05-25', 24, 20, 6);
 INSERT INTO sessions VALUES (21, 1, '2021-06-02 15:00:00', '2021-06-02 18:00:00', '2021-06-02', '2021-05-26', 32, 21, 23);
 INSERT INTO sessions VALUES (22, 1, '2021-06-03 15:00:00', '2021-06-03 16:00:00', '2021-06-03', '2021-05-27', 30, 22, 24);
+INSERT INTO sessions VALUES (23, 2, '2021-04-12 09:00:00', '2021-04-12 11:00:00', '2021-04-12', '2021-04-05', 32, 2, 6);
 
-alter sequence Sessions_sess_id_seq restart with 23;
+alter sequence Sessions_sess_id_seq restart with 24;
 
 INSERT INTO registers VALUES ('2021-04-10', 2, 12, '3487730179254246');
 INSERT INTO registers VALUES ('2021-04-10', 4, 14, '6011160715370157');
@@ -476,7 +479,7 @@ INSERT INTO fulltimesalary VALUES (5000.00, '2021-04-30', 30, 26);
 INSERT INTO fulltimesalary VALUES (5000.00, '2021-04-30', 30, 27);
 
 INSERT INTO parttimesalary VALUES (0.00, '2021-04-30', 0, 31);
-INSERT INTO parttimesalary VALUES (0.00, '2021-04-30', 0, 32);
+INSERT INTO parttimesalary VALUES (6000.00, '2021-04-30', 2, 32);
 INSERT INTO parttimesalary VALUES (0.00, '2021-04-30', 0, 33);
 INSERT INTO parttimesalary VALUES (0.00, '2021-04-30', 0, 34);
 INSERT INTO parttimesalary VALUES (0.00, '2021-04-30', 0, 35);
