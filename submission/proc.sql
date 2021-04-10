@@ -1400,6 +1400,8 @@ ON Specializations.course_area = Courses.course_area
 INNER JOIN CourseOfferings
 ON Courses.course_id = CourseOfferings.course_id
 WHERE Courses.course_id = cid
+AND (depart_date IS NULL OR (depart_date IS NOT NULL AND depart_date >= day))
+AND (join_date <= day)
 AND day BETWEEN s_date AND e_date
 AND (
         (get_emp_status(Specializations.emp_id) = 'Part Time' AND get_monthly_hours(Specializations.emp_id, DATE_PART('month', day), DATE_PART('year', day)) + duration <= 30) 
