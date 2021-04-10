@@ -223,13 +223,14 @@ $$ LANGUAGE sql;
 	-- Instructor haven't joined
 	-- Is on weekends 
 	-- Is after/before operating hours
-	DROP TRIGGER IF EXISTS BEFORE_SESSION_ADD ON SESSIONS;
-	CREATE TRIGGER BEFORE_SESSION_ADD
-	BEFORE
-	INSERT
-	OR
-	UPDATE ON SESSIONS
-	FOR EACH ROW EXECUTE FUNCTION CHECK_SESSION_ADD();
+DROP TRIGGER IF EXISTS BEFORE_SESSION_ADD ON SESSIONS;
+CREATE TRIGGER BEFORE_SESSION_ADD
+BEFORE
+INSERT
+OR
+UPDATE ON SESSIONS
+FOR EACH ROW EXECUTE FUNCTION CHECK_SESSION_ADD();
+
 CREATE OR REPLACE FUNCTION check_courseofferings_seating_capacity()
 RETURNS TRIGGER AS $$
 BEGIN 
@@ -244,23 +245,8 @@ $$ LANGUAGE PLPGSQL;
 -- Update is omitted from this trigger since removal of session can be permitted even if seating capacity drops below target number (F23 remove_session)
 DROP TRIGGER IF EXISTS check_seating_capacity ON CourseOfferings;
 CREATE TRIGGER check_seating_capacity
-BEFORE INSERT ON CourseOfferings
+BEFORE INSERT OR UPDATE ON CourseOfferings
 FOR EACH ROW EXECUTE FUNCTION check_courseofferings_seating_capacity();
-
--- CREATE OR REPLACE FUNCTION before_add_offering()
--- RETURNS TRIGGER AS $$
--- BEGIN 
---     IF NEW.launch_date < CURRENT_DATE THEN 
---         RAISE EXCEPTION 'Launch date must not be in the past';
---     END IF;
---     RETURN NEW;
--- END;
--- $$ LANGUAGE PLPGSQL;
-
--- DROP TRIGGER IF EXISTS before_add_offering_check_date ON CourseOfferings;
--- CREATE TRIGGER before_add_offering_check_date 
--- BEFORE INSERT OR UPDATE ON CourseOfferings
--- FOR EACH ROW EXECUTE FUNCTION before_add_offering();
 
 CREATE OR REPLACE FUNCTION check_is_not_admin_or_manager()
 RETURNS TRIGGER AS $$
@@ -552,14 +538,10 @@ CREATE TRIGGER before_redeem_check_dates
 BEFORE INSERT ON REDEEMS
 FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
 
-
-
 	CREATE OR REPLACE FUNCTION AFTER_SESS_ADD() RETURNS TRIGGER AS $$
 	DECLARE
 	old_capacity integer;
 	new_capacity integer;
-    s_date date;
-    e_date date;
 	BEGIN
 	IF (TG_OP = 'INSERT') THEN
 	SELECT seating_capacity INTO new_capacity FROM Rooms WHERE room_id = NEW.room_id;
@@ -576,31 +558,9 @@ FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
 		UPDATE CourseOfferings
 		SET seating_capacity = seating_capacity + new_capacity
 		WHERE offering_id = NEW.offering_id;
-
-        SELECT start_date, end_date INTO s_date, e_date FROM CourseOfferings 
-        WHERE offering_id = NEW.offering_id;
-
-        UPDATE CourseOfferings 
-        SET start_date = NEW.sess_date
-        WHERE offering_id = NEW.offering_id 
-        AND NOT EXISTS (
-            SELECT 1 FROM SESSIONS 
-            WHERE offering_id = NEW.offering_id 
-            AND sess_id <> NEW.sess_id 
-            AND start_date = s_date
-        );
-
-        UPDATE CourseOfferings 
-        SET end_date = NEW.sess_date
-        WHERE offering_id = NEW.offering_id 
-        AND NOT EXISTS (
-            SELECT 1 FROM SESSIONS 
-            WHERE offering_id = NEW.offering_id 
-            AND sess_id <> NEW.sess_id 
-            AND end_date = e_date
-        );
-
+         CALL update_start_end_time(OLD.offering_id);
 	END IF;
+          CALL update_start_end_time(NEW.offering_id);
 	RETURN NULL;
 
 	END;
@@ -624,6 +584,10 @@ FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
 		RAISE EXCEPTION 'Session has already started and cannot be removed';
 	END IF;
 
+    IF NOT EXISTS (SELECT 1 FROM Sessions WHERE offering_id = OLD.offering_id AND sess_id <> OLD.sess_id) THEN 
+        RAISE EXCEPTION 'There is only one session for this offering. Please add another session before deleting this session';
+    END IF;
+
 	SELECT cust_id INTO session_participant_id FROM SessionParticipants
 	Where sess_id = OLD.sess_id
 	limit 1;
@@ -642,6 +606,60 @@ FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
 	DELETE ON SESSIONS
 	FOR EACH ROW EXECUTE FUNCTION CHECK_SESSION_REMOVAL();
 
+    CREATE OR REPLACE FUNCTION get_offering_start(oid integer) 
+    RETURNS DATE AS $$
+    DECLARE 
+        s RECORD;
+        curr_date date;
+        temp_date date;
+    BEGIN 
+    FOR s IN (SELECT * FROM Sessions WHERE offering_id = oid) 
+    LOOP
+        curr_date = s.sess_date;
+        IF (temp_date IS NULL or curr_date < temp_date) THEN 
+            temp_date := curr_date;
+    END IF; 
+    END LOOP;
+    RETURN temp_date;
+    END;
+    $$ LANGUAGE PLPGSQL;
+
+    
+    CREATE OR REPLACE FUNCTION get_offering_end(oid integer) 
+    RETURNS DATE AS $$
+    DECLARE 
+        s RECORD;
+        curr_date date;
+        temp_date date;
+    BEGIN 
+    FOR s IN (SELECT * FROM Sessions WHERE offering_id = oid) 
+    LOOP
+        curr_date = s.sess_date;
+        IF (temp_date IS NULL or curr_date > temp_date) THEN 
+            temp_date := curr_date;
+    END IF; 
+    END LOOP;
+    RETURN temp_date;
+    END;
+    $$ LANGUAGE PLPGSQL;
+
+
+    CREATE OR REPLACE PROCEDURE update_start_end_time(oid integer)
+    AS $$
+    DECLARE
+        s_date date;
+        e_date date;
+    BEGIN 
+        s_date := get_offering_start(oid);
+        e_date := get_offering_end(oid);
+        UPDATE COURSEOFFERINGS 
+        SET start_date = s_date,
+        end_date = e_date 
+        WHERE offering_id = oid;
+    END;
+    $$ LANGUAGE PLPGSQL;
+    
+
 	CREATE OR REPLACE FUNCTION AFTER_SESSION_DELETE()
 	RETURNS TRIGGER AS $$ 
 	DECLARE 
@@ -650,9 +668,16 @@ FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
     e_date date;
 	BEGIN 
 	SELECT seating_capacity INTO capacity FROM Rooms WHERE room_id = OLD.room_id;
+    SELECT start_date, end_date INTO s_date, e_date FROM CourseOfferings 
+    WHERE offering_id = OLD.offering_id;
+
 	UPDATE CourseOfferings
 	SET seating_capacity = seating_capacity - capacity
 	WHERE offering_id = OLD.offering_id;
+
+    IF (s_date = OLD.sess_date OR e_date = OLD.sess_date) THEN 
+        CALL update_start_end_time(OLD.offering_id);
+    END IF;
 
 	RETURN NULL;
 	END;
@@ -703,13 +728,14 @@ DECLARE
 BEGIN
     SELECT payment_date INTO _ft_payment_date FROM FullTimeSalary;
     SELECT end_of_month(_ft_payment_date) INTO _last_day_of_month;
-    SELECT COUNT(DISTINCT payment_date) INTO _number_of_payment_dates FROM FullTimeSalary 
+    SELECT COUNT(*) INTO _number_of_payment_dates FROM FullTimeSalary 
         WHERE DATE_PART('month', payment_date) = DATE_PART('month', _last_day_of_month) 
-        AND DATE_PART('year', payment_date) = DATE_PART('year', _last_day_of_month);
+        AND DATE_PART('year', payment_date) = DATE_PART('year', _last_day_of_month)
+        AND emp_id = NEW.emp_id;
     IF (_ft_payment_date <> _last_day_of_month) THEN
         RAISE EXCEPTION 'Payment date is not at end of the month';
     END IF;
-	IF (_number_of_payment_dates > 1) THEN
+	IF (_number_of_payment_dates > 0) THEN
         RAISE EXCEPTION 'Full-time salaries are paid more than once for this month';
 	END IF;
     RETURN NEW;
@@ -730,13 +756,14 @@ DECLARE
 BEGIN
     SELECT payment_date INTO _pt_payment_date FROM PartTimeSalary;
     SELECT end_of_month(_pt_payment_date) INTO _last_day_of_month;
-    SELECT COUNT(DISTINCT payment_date) INTO _number_of_payment_dates FROM PartTimeSalary 
+    SELECT COUNT(*) INTO _number_of_payment_dates FROM PartTimeSalary 
         WHERE DATE_PART('month', payment_date) = DATE_PART('month', _last_day_of_month) 
-        AND DATE_PART('year', payment_date) = DATE_PART('year', _last_day_of_month);
+        AND DATE_PART('year', payment_date) = DATE_PART('year', _last_day_of_month)
+        AND emp_id = NEW.emp_id;
     IF (_pt_payment_date <> _last_day_of_month) THEN
         RAISE EXCEPTION 'Payment date is not at end of the month';
     END IF;
-	IF (_number_of_payment_dates > 1) THEN
+	IF (_number_of_payment_dates > 0) THEN
         RAISE EXCEPTION 'Part-time salaries are paid more than once for this month';
 	END IF;
     RETURN NEW;
@@ -1556,7 +1583,7 @@ END $$ LANGUAGE PLPGSQL;
 
 
 CREATE OR REPLACE PROCEDURE add_course_offering(
-    offering_id integer,
+    oid integer,
     course_id integer,
     fees numeric,
     target_number integer,
@@ -1568,7 +1595,7 @@ CREATE OR REPLACE PROCEDURE add_course_offering(
 
 DECLARE 
 
-seating_capacity integer;
+s_capacity integer;
 
 start_date date;
 
@@ -1582,7 +1609,7 @@ IF (array_length(session_items, 1) is NULL) THEN
     RAISE EXCEPTION 'There must be at least one session';
 END IF;
 
-seating_capacity := getSeatingCapacity(session_items);
+s_capacity := target_number; 
 
 SELECT getStartDate(session_items) into start_date;
 
@@ -1591,10 +1618,10 @@ SELECT getEndDate(session_items) into end_date;
 SELECT getCourseDuration(course_id) into duration;
 
 CALL add_offering(
-    offering_id,
+    oid,
     start_date,
     end_date,
-    seating_capacity,
+    s_capacity,
     course_id,
     fees,
     target_number,
@@ -1603,8 +1630,11 @@ CALL add_offering(
     admin_id
 );
 
-CALL create_sessions(course_id, offering_id, launch_date, duration, session_items);
+CALL create_sessions(course_id, oid, launch_date, duration, session_items);
 
+UPDATE CourseOfferings 
+SET seating_capacity = seating_capacity - target_number 
+WHERE offering_id = oid;
 
 END;
 
