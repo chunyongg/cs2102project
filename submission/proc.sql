@@ -1768,6 +1768,31 @@ begin
 end;
 $$ LANGUAGE plpgsql;
 
+create or replace function get_my_course_package(IN c_id integer)
+returns json[] as $$
+declare
+    r record;
+    result json[]; --
+begin
+    result := null;
+    if (not exists (select C.cust_id from Customers C where C.cust_id = c_id)) then
+        raise exception 'Customer does not exist in the system, please check again.';
+    end if;
+    if (not exists (select B.cust_id from Buys B where B.cust_id = c_id)) then
+        raise exception 'Customer did not buy any Course Package, unable to retrieve Course Package.';
+    else
+        for r in (select * from get_my_course_package_table(c_id))
+        loop
+            result := array_append(result, row_to_json(r));
+        end loop;
+        if (result is null) then
+            raise exception 'Customer has no active/inactive Course Package.';
+        else
+            return result;
+        end if;
+    end if;
+end;
+$$ language plpgsql;
 
 -- F15
 
