@@ -223,13 +223,14 @@ $$ LANGUAGE sql;
 	-- Instructor haven't joined
 	-- Is on weekends 
 	-- Is after/before operating hours
-	DROP TRIGGER IF EXISTS BEFORE_SESSION_ADD ON SESSIONS;
-	CREATE TRIGGER BEFORE_SESSION_ADD
-	BEFORE
-	INSERT
-	OR
-	UPDATE ON SESSIONS
-	FOR EACH ROW EXECUTE FUNCTION CHECK_SESSION_ADD();
+DROP TRIGGER IF EXISTS BEFORE_SESSION_ADD ON SESSIONS;
+CREATE TRIGGER BEFORE_SESSION_ADD
+BEFORE
+INSERT
+OR
+UPDATE ON SESSIONS
+FOR EACH ROW EXECUTE FUNCTION CHECK_SESSION_ADD();
+
 CREATE OR REPLACE FUNCTION check_courseofferings_seating_capacity()
 RETURNS TRIGGER AS $$
 BEGIN 
@@ -244,23 +245,8 @@ $$ LANGUAGE PLPGSQL;
 -- Update is omitted from this trigger since removal of session can be permitted even if seating capacity drops below target number (F23 remove_session)
 DROP TRIGGER IF EXISTS check_seating_capacity ON CourseOfferings;
 CREATE TRIGGER check_seating_capacity
-BEFORE INSERT ON CourseOfferings
+BEFORE INSERT OR UPDATE ON CourseOfferings
 FOR EACH ROW EXECUTE FUNCTION check_courseofferings_seating_capacity();
-
--- CREATE OR REPLACE FUNCTION before_add_offering()
--- RETURNS TRIGGER AS $$
--- BEGIN 
---     IF NEW.launch_date < CURRENT_DATE THEN 
---         RAISE EXCEPTION 'Launch date must not be in the past';
---     END IF;
---     RETURN NEW;
--- END;
--- $$ LANGUAGE PLPGSQL;
-
--- DROP TRIGGER IF EXISTS before_add_offering_check_date ON CourseOfferings;
--- CREATE TRIGGER before_add_offering_check_date 
--- BEFORE INSERT OR UPDATE ON CourseOfferings
--- FOR EACH ROW EXECUTE FUNCTION before_add_offering();
 
 CREATE OR REPLACE FUNCTION check_is_not_admin_or_manager()
 RETURNS TRIGGER AS $$
@@ -697,6 +683,7 @@ FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
         end_date = e_date 
         WHERE offering_id = oid;
     END;
+    $$ LANGUAGE PLPGSQL;
     
 
 	CREATE OR REPLACE FUNCTION AFTER_SESSION_DELETE()
@@ -767,13 +754,15 @@ DECLARE
 BEGIN
     SELECT payment_date INTO _ft_payment_date FROM FullTimeSalary;
     SELECT end_of_month(_ft_payment_date) INTO _last_day_of_month;
-    SELECT COUNT(DISTINCT payment_date) INTO _number_of_payment_dates FROM FullTimeSalary 
+    SELECT COUNT(*) INTO _number_of_payment_dates FROM FullTimeSalary 
         WHERE DATE_PART('month', payment_date) = DATE_PART('month', _last_day_of_month) 
-        AND DATE_PART('year', payment_date) = DATE_PART('year', _last_day_of_month);
+        AND DATE_PART('year', payment_date) = DATE_PART('year', _last_day_of_month)
+        AND emp_id = NEW.emp_id;
     IF (_ft_payment_date <> _last_day_of_month) THEN
         RAISE EXCEPTION 'Payment date is not at end of the month';
     END IF;
-	IF (_number_of_payment_dates > 1) THEN
+	IF (_number_of_payment_dates > 0) THEN
+    RAISE NOTICE '%', _number_of_payment_dates;
         RAISE EXCEPTION 'Full-time salaries are paid more than once for this month';
 	END IF;
     RETURN NEW;
@@ -794,13 +783,14 @@ DECLARE
 BEGIN
     SELECT payment_date INTO _pt_payment_date FROM PartTimeSalary;
     SELECT end_of_month(_pt_payment_date) INTO _last_day_of_month;
-    SELECT COUNT(DISTINCT payment_date) INTO _number_of_payment_dates FROM PartTimeSalary 
+    SELECT COUNT(*) INTO _number_of_payment_dates FROM PartTimeSalary 
         WHERE DATE_PART('month', payment_date) = DATE_PART('month', _last_day_of_month) 
-        AND DATE_PART('year', payment_date) = DATE_PART('year', _last_day_of_month);
+        AND DATE_PART('year', payment_date) = DATE_PART('year', _last_day_of_month)
+        AND emp_id = NEW.emp_id;
     IF (_pt_payment_date <> _last_day_of_month) THEN
         RAISE EXCEPTION 'Payment date is not at end of the month';
     END IF;
-	IF (_number_of_payment_dates > 1) THEN
+	IF (_number_of_payment_dates > 0) THEN
         RAISE EXCEPTION 'Part-time salaries are paid more than once for this month';
 	END IF;
     RETURN NEW;
@@ -1620,7 +1610,7 @@ END $$ LANGUAGE PLPGSQL;
 
 
 CREATE OR REPLACE PROCEDURE add_course_offering(
-    offering_id integer,
+    oid integer,
     course_id integer,
     fees numeric,
     target_number integer,
@@ -1632,7 +1622,7 @@ CREATE OR REPLACE PROCEDURE add_course_offering(
 
 DECLARE 
 
-seating_capacity integer;
+s_capacity integer;
 
 start_date date;
 
@@ -1646,7 +1636,7 @@ IF (array_length(session_items, 1) is NULL) THEN
     RAISE EXCEPTION 'There must be at least one session';
 END IF;
 
-seating_capacity := getSeatingCapacity(session_items);
+s_capacity := target_number; 
 
 SELECT getStartDate(session_items) into start_date;
 
@@ -1655,10 +1645,10 @@ SELECT getEndDate(session_items) into end_date;
 SELECT getCourseDuration(course_id) into duration;
 
 CALL add_offering(
-    offering_id,
+    oid,
     start_date,
     end_date,
-    seating_capacity,
+    s_capacity,
     course_id,
     fees,
     target_number,
@@ -1667,8 +1657,11 @@ CALL add_offering(
     admin_id
 );
 
-CALL create_sessions(course_id, offering_id, launch_date, duration, session_items);
+CALL create_sessions(course_id, oid, launch_date, duration, session_items);
 
+UPDATE CourseOfferings 
+SET seating_capacity = seating_capacity - target_number 
+WHERE offering_id = oid;
 
 END;
 
@@ -2182,10 +2175,11 @@ $$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION find_hours_worked(d date, eid integer)
 RETURNS INTEGER AS $$
+DECLARE
 SELECT PHRS.hours_worked FROM PartTimeHoursWorked PHRS
 WHERE PHRS.emp_id = eid 
 AND PHRS.month_year = date_trunc('month', d);
-$$ LANGUAGE SQL;
+$$ LANGUAGE PLPGSQL;
 
 
 CREATE OR REPLACE FUNCTION pay_fullTimeEmployees()
