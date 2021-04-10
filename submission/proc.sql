@@ -538,14 +538,10 @@ CREATE TRIGGER before_redeem_check_dates
 BEFORE INSERT ON REDEEMS
 FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
 
-
-
 	CREATE OR REPLACE FUNCTION AFTER_SESS_ADD() RETURNS TRIGGER AS $$
 	DECLARE
 	old_capacity integer;
 	new_capacity integer;
-    s_date date;
-    e_date date;
 	BEGIN
 	IF (TG_OP = 'INSERT') THEN
 	SELECT seating_capacity INTO new_capacity FROM Rooms WHERE room_id = NEW.room_id;
@@ -562,31 +558,9 @@ FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
 		UPDATE CourseOfferings
 		SET seating_capacity = seating_capacity + new_capacity
 		WHERE offering_id = NEW.offering_id;
-
-        SELECT start_date, end_date INTO s_date, e_date FROM CourseOfferings 
-        WHERE offering_id = NEW.offering_id;
-
-        UPDATE CourseOfferings 
-        SET start_date = NEW.sess_date
-        WHERE offering_id = NEW.offering_id 
-        AND NOT EXISTS (
-            SELECT 1 FROM SESSIONS 
-            WHERE offering_id = NEW.offering_id 
-            AND sess_id <> NEW.sess_id 
-            AND start_date = s_date
-        );
-
-        UPDATE CourseOfferings 
-        SET end_date = NEW.sess_date
-        WHERE offering_id = NEW.offering_id 
-        AND NOT EXISTS (
-            SELECT 1 FROM SESSIONS 
-            WHERE offering_id = NEW.offering_id 
-            AND sess_id <> NEW.sess_id 
-            AND end_date = e_date
-        );
-
+         CALL update_start_end_time(OLD.offering_id);
 	END IF;
+          CALL update_start_end_time(NEW.offering_id);
 	RETURN NULL;
 
 	END;
