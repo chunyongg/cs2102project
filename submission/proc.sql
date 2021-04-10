@@ -624,6 +624,10 @@ FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
 		RAISE EXCEPTION 'Session has already started and cannot be removed';
 	END IF;
 
+    IF NOT EXISTS (SELECT 1 FROM Sessions WHERE offering_id = OLD.offering_id AND sess_id <> OLD.sess_id) THEN 
+        RAISE EXCEPTION 'There is only one session for this offering. Please add another session before deleting this session';
+    END IF;
+
 	SELECT cust_id INTO session_participant_id FROM SessionParticipants
 	Where sess_id = OLD.sess_id
 	limit 1;
