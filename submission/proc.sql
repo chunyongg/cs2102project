@@ -1723,7 +1723,7 @@ IF (array_length(session_items, 1) is NULL) THEN
     RAISE EXCEPTION 'There must be at least one session';
 END IF;
 
-room_capacity := getSeatingCapacity(session_items)
+room_capacity := getSeatingCapacity(session_items);
 
 IF target_number > room_capacity THEN 
     RAISE EXCEPTION 'Target number cannot be more than seating capacity';
