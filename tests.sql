@@ -168,6 +168,8 @@ call update_instructor(2, 1, 40); -- instructor departed alr
 -- F22
 call update_room(4, 1, 10); -- room is taken by another session
 call update_room(1, 1, 6);
+call update_room(50, 1, 6); -- offering_id does not exist
+call update_room(1, 50, 6); -- session does not exist
 
 -- Not tested: registered > capacity
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
