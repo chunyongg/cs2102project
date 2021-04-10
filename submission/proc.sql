@@ -762,7 +762,6 @@ BEGIN
         RAISE EXCEPTION 'Payment date is not at end of the month';
     END IF;
 	IF (_number_of_payment_dates > 0) THEN
-    RAISE NOTICE '%', _number_of_payment_dates;
         RAISE EXCEPTION 'Full-time salaries are paid more than once for this month';
 	END IF;
     RETURN NEW;
