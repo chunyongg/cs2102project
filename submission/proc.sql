@@ -245,7 +245,7 @@ $$ LANGUAGE PLPGSQL;
 -- Update is omitted from this trigger since removal of session can be permitted even if seating capacity drops below target number (F23 remove_session)
 DROP TRIGGER IF EXISTS check_seating_capacity ON CourseOfferings;
 CREATE TRIGGER check_seating_capacity
-BEFORE INSERT OR UPDATE ON CourseOfferings
+BEFORE INSERT CourseOfferings
 FOR EACH ROW EXECUTE FUNCTION check_courseofferings_seating_capacity();
 
 CREATE OR REPLACE FUNCTION check_is_not_admin_or_manager()
