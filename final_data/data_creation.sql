@@ -203,6 +203,8 @@ CALL add_course_offering(21, 9 , 100, 10, '2021-03-22',
 CALL add_course_offering(22, 10 , 100, 10, '2021-03-24', 
 '2021-05-23', 2 , '{"(2021-06-03,\"2021-06-03 15:00:00\",24)"}' :: SessionInfo[]);
 
+CALL add_session(2, 2, '2021-04-12', '2021-04-12 09:00', 32, 6);
+
 -- Create the packages 
 alter sequence CoursePackages_package_id_seq restart with 1;
 CALL add_course_package('3-3 Sale Package', 1, '2021-03-03', '2021-03-03', 100);
