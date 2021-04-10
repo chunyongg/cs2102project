@@ -29,9 +29,9 @@ CALL add_course('GD1101', 'Learn all about Games', 'Game Design', 4); -- Pass
 -- Sessions cannot be empty
 CALL add_course_offering(23, 2, 300, 10, '2021-05-21', '2021-05-11', 1, '{}' :: SessionInfo[]);
 -- Launch date after registration deadline
-CALL add_course_offering(23, 2, 300, 200, '2021-05-21', '2021-05-11', 1, '{"(2021-05-21,\"2021-05-21 09:00:00\",1)"}' :: SessionInfo[]);
+CALL add_course_offering(23, 2, 300, 10, '2021-05-21', '2021-05-11', 1, '{"(2021-05-21,\"2021-05-21 09:00:00\",1)"}' :: SessionInfo[]);
 -- Registration deadline less than 10 days before start date
-CALL add_course_offering(23, 2, 300, 200, '2021-05-11', '2021-05-20', 1, '{"(2021-05-29,\"2021-05-29 09:00:00\",1)"}' :: SessionInfo[]);
+CALL add_course_offering(23, 2, 300, 10, '2021-05-11', '2021-05-20', 1, '{"(2021-05-29,\"2021-05-29 09:00:00\",1)"}' :: SessionInfo[]);
 -- Session capacity less than target number
 CALL add_course_offering(23, 2, 300, 200, '2021-05-11', '2021-05-11', 1, '{"(2021-05-21,\"2021-05-21 09:00:00\",1)"}' :: SessionInfo[]);
 -- Should pass
@@ -55,11 +55,12 @@ CALL add_session(3, 2, '2021-06-07', '2021-06-07 09:00', 36, 7); -- Passes
 CALL add_session(3, 3, '2021-06-08', '2021-06-08 09:00', 36, 7); -- Passes
 
 -- F23
+SELECT * FROM SESSIONS ORDER BY offering_id
 CALL remove_session(2, 2) -- Session started, cannot be removed
 ------------
 -- FAILS
-CALL register_session(25, 3, 2, 'payment');
-CALL remove_session(3, 2); -- Customer registered, cannot remove
+CALL register_session(25, 3, 1, 'payment');
+CALL remove_session(3, 1); -- Customer registered, cannot remove (do add_sess tests first before running this)
 ---------------
 --PASSES
 CALL add_session(3, 3, '2021-06-08', '2021-06-08 09:00', 36, 7); -- Passes
