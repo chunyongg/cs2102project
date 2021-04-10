@@ -642,6 +642,59 @@ FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
 	DELETE ON SESSIONS
 	FOR EACH ROW EXECUTE FUNCTION CHECK_SESSION_REMOVAL();
 
+    CREATE OR REPLACE FUNCTION get_offering_start(oid integer) 
+    RETURNS DATE AS $$
+    DECLARE 
+        s RECORD;
+        curr_date date;
+        temp_date date;
+    BEGIN 
+    FOR s IN (SELECT * FROM Sessions WHERE offering_id = oid) 
+    LOOP
+        curr_date = s.sess_date;
+        IF (temp_date IS NULL or curr_date < temp_date) THEN 
+            temp_date := curr_date;
+    END IF; 
+    END LOOP;
+    RETURN temp_date;
+    END;
+    $$ LANGUAGE PLPGSQL;
+
+    
+    CREATE OR REPLACE FUNCTION get_offering_end(oid integer) 
+    RETURNS DATE AS $$
+    DECLARE 
+        s RECORD;
+        curr_date date;
+        temp_date date;
+    BEGIN 
+    FOR s IN (SELECT * FROM Sessions WHERE offering_id = oid) 
+    LOOP
+        curr_date = s.sess_date;
+        IF (temp_date IS NULL or curr_date > temp_date) THEN 
+            temp_date := curr_date;
+    END IF; 
+    END LOOP;
+    RETURN temp_date;
+    END;
+    $$ LANGUAGE PLPGSQL;
+
+
+    CREATE OR REPLACE PROCEDURE update_start_end_time(oid integer)
+    AS $$
+    DECLARE
+        s_date date;
+        e_date date;
+    BEGIN 
+        s_date := get_offering_start(oid);
+        e_date := get_offering_end(oid);
+        UPDATE COURSEOFFERINGS 
+        SET start_date = s_date,
+        end_date = e_date 
+        WHERE offering_id = oid;
+    END;
+    
+
 	CREATE OR REPLACE FUNCTION AFTER_SESSION_DELETE()
 	RETURNS TRIGGER AS $$ 
 	DECLARE 
@@ -650,9 +703,16 @@ FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
     e_date date;
 	BEGIN 
 	SELECT seating_capacity INTO capacity FROM Rooms WHERE room_id = OLD.room_id;
+    SELECT start_date, end_date INTO s_date, e_date FROM CourseOfferings 
+    WHERE offering_id = OLD.offering_id;
+
 	UPDATE CourseOfferings
 	SET seating_capacity = seating_capacity - capacity
 	WHERE offering_id = OLD.offering_id;
+
+    IF (s_date = OLD.sess_date OR e_date = OLD.sess_date) THEN 
+        CALL update_start_end_time(OLD.offering_id);
+    END IF;
 
 	RETURN NULL;
 	END;
