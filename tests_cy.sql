@@ -19,11 +19,11 @@ CALL remove_employee(11, '2021-02-21');
 -- Employee already left
 CALL remove_employee(26, '2021-05-21');
 CALL REMOVE_EMPLOYEE(343333, '2021-04-21'); -- Does not exist
-CALL remove_employee(41, '2021-'); -- Succeed
+CALL remove_employee(43, '2021-05-03'); -- Succeed
 
 --F5
 CALL add_course('EC1101', 'Learn all about Economics', 'Economics', 5); -- No such course area
-CALL add_course('GD1101', 'Learn all about Games', 'Game Design', 5); -- Pass
+CALL add_course('GD1101', 'Learn all about Games', 'Game Design', 4); -- Pass
 
 --F10
 -- Sessions cannot be empty
