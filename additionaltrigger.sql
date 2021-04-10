@@ -4,7 +4,12 @@
 
 CREATE OR REPLACE FUNCTION update_cc() RETURNS TRIGGER AS $$
 BEGIN
-    if (New.expiry_date < current_date) then
+    if exists(select CC.cust_id 
+        from CreditCards CC 
+        where CC.cust_id = New.cust_id 
+        and CC.cc_number = New.cc_number) then
+        raise exception 'Credit Card is already registered under the Customer, no update required.';
+    elsif (New.expiry_date < current_date) then
         raise exception 'Credit Card has expired, please update with a valid card.';
     else
         return New;
