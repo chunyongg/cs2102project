@@ -1945,7 +1945,6 @@ $$ language plpgsql;
 CREATE OR REPLACE PROCEDURE update_course_session(IN cid integer, IN oid integer, IN _sess_num integer)
 AS $$
 declare
-    rid integer;
     old_sid integer;
     new_sid integer;
 begin
