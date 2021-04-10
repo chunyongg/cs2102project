@@ -2175,11 +2175,10 @@ $$ LANGUAGE PLPGSQL;
 
 CREATE OR REPLACE FUNCTION find_hours_worked(d date, eid integer)
 RETURNS INTEGER AS $$
-DECLARE
 SELECT PHRS.hours_worked FROM PartTimeHoursWorked PHRS
 WHERE PHRS.emp_id = eid 
 AND PHRS.month_year = date_trunc('month', d);
-$$ LANGUAGE PLPGSQL;
+$$ LANGUAGE SQL;
 
 
 CREATE OR REPLACE FUNCTION pay_fullTimeEmployees()
