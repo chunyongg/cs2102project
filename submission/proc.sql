@@ -30,7 +30,7 @@ $$ LANGUAGE PLPGSQL;
 
 
 	-- Get an array of hours where the instructor is unavailable to teach, including breaks.
-	CREATE OR REPLACE FUNCTION get_instructor_unavailable_hours(eid integer, day date, session_id integer)
+	CREATE OR REPLACE FUNCTION get_instructor_unavailable_hours(eid integer, day date)
 	RETURNS INT[] AS $$
 	SELECT ARRAY(
 		SELECT * 
@@ -39,7 +39,6 @@ $$ LANGUAGE PLPGSQL;
 	FROM Sessions
 	WHERE sess_date = day
 	AND instructor_id = eid
-    AND sess_id <> session_id;
 	$$ LANGUAGE SQL;
 
     -- Get instructor's work hours for that month
@@ -186,7 +185,7 @@ $$ LANGUAGE sql;
 		RAISE EXCEPTION 'Instructor is already teaching at this time';
 	END IF;
 
-	unavailable_hours:= get_instructor_unavailable_hours(NEW.instructor_id, NEW.sess_date, NEW.sess_id);
+	unavailable_hours:= get_instructor_unavailable_hours(NEW.instructor_id, NEW.sess_date);
 
 	IF unavailable_hours IS NOT NULL THEN 
 		FOREACH unavailable_hour IN ARRAY unavailable_hours
@@ -558,8 +557,6 @@ FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
 	DECLARE
 	old_capacity integer;
 	new_capacity integer;
-    s_date date;
-    e_date date;
 	BEGIN
 	IF (TG_OP = 'INSERT') THEN
 	SELECT seating_capacity INTO new_capacity FROM Rooms WHERE room_id = NEW.room_id;
@@ -576,30 +573,6 @@ FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
 		UPDATE CourseOfferings
 		SET seating_capacity = seating_capacity + new_capacity
 		WHERE offering_id = NEW.offering_id;
-
-        SELECT start_date, end_date INTO s_date, e_date FROM CourseOfferings 
-        WHERE offering_id = NEW.offering_id;
-
-        UPDATE CourseOfferings 
-        SET start_date = NEW.sess_date
-        WHERE offering_id = NEW.offering_id 
-        AND NOT EXISTS (
-            SELECT 1 FROM SESSIONS 
-            WHERE offering_id = NEW.offering_id 
-            AND sess_id <> NEW.sess_id 
-            AND start_date = s_date
-        );
-
-        UPDATE CourseOfferings 
-        SET end_date = NEW.end_date
-        WHERE offering_id = NEW.offering_id 
-        AND NOT EXISTS (
-            SELECT 1 FROM SESSIONS 
-            WHERE offering_id = NEW.offering_id 
-            AND sess_id <> NEW.sess_id 
-            AND end_date = e_date
-        );
-
 	END IF;
 	RETURN NULL;
 
@@ -646,14 +619,11 @@ FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
 	RETURNS TRIGGER AS $$ 
 	DECLARE 
 	capacity integer;
-    s_date date;
-    e_date date;
 	BEGIN 
 	SELECT seating_capacity INTO capacity FROM Rooms WHERE room_id = OLD.room_id;
 	UPDATE CourseOfferings
 	SET seating_capacity = seating_capacity - capacity
 	WHERE offering_id = OLD.offering_id;
-
 	RETURN NULL;
 	END;
 	$$ LANGUAGE PLPGSQL;
@@ -1016,10 +986,6 @@ BEGIN
     old_hours_worked := get_difference_in_hours(OLD.end_time, OLD.start_time);
     new_hours_worked := get_difference_in_hours(NEW.end_time, NEW.start_time);
 
-    UPDATE PartTimeHoursWorked
-    SET hours_worked = hours_worked - old_hours_worked
-    WHERE emp_id = OLD.instructor_id AND month_year = date_trunc('month', OLD.sess_date);
-
     IF (NOT EXISTS (SELECT 1 FROM PartTimeInstructors WHERE emp_id = inst_id)) THEN 
         RETURN NULL;
     END IF;
@@ -1028,6 +994,10 @@ BEGIN
     VALUES (new_hours_worked, date_trunc('month', NEW.sess_date), inst_id)
     ON CONFLICT (month_year, emp_id) DO UPDATE SET hours_worked = EXCLUDED.hours_worked + new_hours_worked;
     
+    UPDATE PartTimeHoursWorked
+    SET hours_worked = hours_worked - old_hours_worked
+    WHERE emp_id = OLD.instructor_id AND month_year = date_trunc('month', OLD.sess_date);
+
 RETURN NULL;
 END;
 $$ LANGUAGE PLPGSQL;
@@ -1339,11 +1309,13 @@ CREATE OR REPLACE FUNCTION find_rooms (_start_time TIMESTAMP, _duration INT)
 RETURNS TABLE(_room_id INT) AS $$
     DECLARE
         _day INT := extract(dow from _start_time);
-        _hour INT := date_part('hour', _start_time);
+        _start_hour INT := date_part('hour', _start_time);
+        _end_time TIMESTAMP := _start_time + interval '1h' * _duration;
+        _end_hour INT := date_part('hour', _end_time);
     BEGIN
         IF _day in (0,6) THEN
         raise exception 'No course sessions will be held during weekends.';
-        ELSIF _hour not in (9,10,11,14,15,16,17) THEN
+        ELSIF _start_hour not in (9,10,11,14,15,16,17) OR _end_hour not in (10, 11, 12, 15, 16, 17, 18) THEN
             raise exception 'No course sessions will be held during non-operational hours.';
         END IF;
         RETURN QUERY
@@ -1352,7 +1324,7 @@ RETURNS TABLE(_room_id INT) AS $$
         EXCEPT
         SELECT distinct room_id
         FROM Sessions
-        WHERE (start_time, end_time) overlaps (_start_time, _start_time + interval '1h' * _duration)
+        WHERE (start_time, end_time) overlaps (_start_time, _end_time)
         ORDER BY room_id;
     END;
 $$ LANGUAGE PLPGSQL;
