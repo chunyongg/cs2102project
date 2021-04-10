@@ -39,6 +39,8 @@ INSERT INTO employees VALUES (33, 'June Lim', '1 Brooke Rd', 97416583, 'june.lim
 INSERT INTO employees VALUES (38, 'Ma Chen', '7 Thomson View', 98255196, 'ma.chen@gmail.com', '2021-04-01', '2021-04-01');
 INSERT INTO employees VALUES (40, 'Hasna Mohammad', 'Blk 43 Marine Parade Street 27', 98983211, 'hasna.mohammad@gmail.com', '2020-01-01', '2021-01-01');
 
+alter sequence Employees_emp_id_seq restart with 41;
+
 INSERT INTO fulltimeemployees VALUES (3000.00, 1);
 INSERT INTO fulltimeemployees VALUES (3000.00, 2);
 INSERT INTO fulltimeemployees VALUES (3000.00, 3);
@@ -92,6 +94,8 @@ INSERT INTO coursepackages VALUES (8, '2021-04-01', '2021-10-01', 11, 'Comprehen
 INSERT INTO coursepackages VALUES (9, '2021-04-01', '2021-11-01', 12, 'Expert Package', 2500.00);
 INSERT INTO coursepackages VALUES (10, '2021-04-01', '2021-12-01', 13, 'Unlimited', 10000.00);
 
+alter sequence CoursePackages_package_id_seq restart with 11;
+
 INSERT INTO customers VALUES (1, '13 Lor 8 Toa Payoh', 98264332, 'Xia Cheng', 'xiacheng@gmail.com');
 INSERT INTO customers VALUES (2, '51 New Bridge Road', 82654397, 'Shi Hui Min', 'huimin96@yahoo.com');
 INSERT INTO customers VALUES (3, '437 Tanjong Katong Rd', 89776527, 'Abdul Hazirah', 'itzhazirah@email.com');
@@ -117,6 +121,8 @@ INSERT INTO customers VALUES (22, '23 Simei Center', 90816006, 'Preeti Sun', 'pr
 INSERT INTO customers VALUES (23, '65 Chong Pang Green', 82936537, 'Adi Wahid', 'adi_wahid@email.com');
 INSERT INTO customers VALUES (24, '7 Teck Ghee Road', 92298531, 'Amanda Hong', 'amandahong@gmail.com');
 INSERT INTO customers VALUES (25, '6 Choa Chu Kang Hill', 83553470, 'Hassan Nasser', 'hassan@me.com');
+
+alter sequence Customers_cust_id_seq restart with 26;
 
 INSERT INTO creditcards VALUES ('4602659607038509', 725, '2022-01-01', 1);
 INSERT INTO creditcards VALUES ('3487730179254246', 135, '2023-02-01', 2);
@@ -296,6 +302,8 @@ INSERT INTO courses VALUES (8, 2, 'Software Engineering', 'Learn about software 
 INSERT INTO courses VALUES (9, 3, 'Data Analytics', 'Learn about data analytics', 'Data Analytics');
 INSERT INTO courses VALUES (10, 1, 'Programming Languages', 'Learn about programming', 'Programming Languages');
 
+alter sequence Courses_course_id_seq restart with 11;
+
 INSERT INTO rooms VALUES (1, '01-01', 20);
 INSERT INTO rooms VALUES (2, '01-02', 20);
 INSERT INTO rooms VALUES (3, '01-03', 20);
@@ -321,6 +329,8 @@ INSERT INTO rooms VALUES (22, '05-02', 40);
 INSERT INTO rooms VALUES (23, '05-03', 40);
 INSERT INTO rooms VALUES (24, '05-04', 40);
 INSERT INTO rooms VALUES (25, '05-05', 40);
+
+alter sequence Rooms_room_id_seq restart with 26;
 
 INSERT INTO courseofferings VALUES (1, '2021-03-23', '2021-06-02', '2021-06-02', '2021-05-23', 10, 100.00, 40, 1, 1);
 INSERT INTO courseofferings VALUES (2, '2021-03-23', '2021-06-03', '2021-06-03', '2021-05-23', 11, 100.00, 40, 2, 2);
@@ -367,6 +377,8 @@ INSERT INTO sessions VALUES (19, 1, '2021-05-31 14:00:00', '2021-05-31 15:00:00'
 INSERT INTO sessions VALUES (20, 1, '2021-06-01 10:00:00', '2021-06-01 12:00:00', '2021-06-01', '2021-05-25', 24, 20, 6);
 INSERT INTO sessions VALUES (21, 1, '2021-06-02 15:00:00', '2021-06-02 18:00:00', '2021-06-02', '2021-05-26', 32, 21, 23);
 INSERT INTO sessions VALUES (22, 1, '2021-06-03 15:00:00', '2021-06-03 16:00:00', '2021-06-03', '2021-05-27', 30, 22, 24);
+
+alter sequence Sessions_sess_id_seq restart with 23;
 
 INSERT INTO registers VALUES ('2021-04-10', 2, 12, '3487730179254246');
 INSERT INTO registers VALUES ('2021-04-10', 4, 14, '6011160715370157');

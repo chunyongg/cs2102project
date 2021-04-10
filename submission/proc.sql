@@ -591,7 +591,7 @@ FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
         );
 
         UPDATE CourseOfferings 
-        SET end_date = NEW.end_date
+        SET end_date = NEW.sess_date
         WHERE offering_id = NEW.offering_id 
         AND NOT EXISTS (
             SELECT 1 FROM SESSIONS 
