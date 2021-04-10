@@ -48,7 +48,7 @@ CREATE TRIGGER reg_check_cc_trigger
 BEFORE INSERT OR UPDATE ON Registers
 FOR EACH ROW EXECUTE FUNCTION check_cc_expiry();
 
--- check credit card valid 
+-- check credit card exist 
 
 CREATE OR REPLACE FUNCTION check_cc_exist() RETURNS TRIGGER AS $$
 BEGIN
