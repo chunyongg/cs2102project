@@ -245,7 +245,7 @@ $$ LANGUAGE PLPGSQL;
 -- Update is omitted from this trigger since removal of session can be permitted even if seating capacity drops below target number (F23 remove_session)
 DROP TRIGGER IF EXISTS check_seating_capacity ON CourseOfferings;
 CREATE TRIGGER check_seating_capacity
-BEFORE INSERT OR UPDATE ON CourseOfferings
+BEFORE INSERT ON CourseOfferings
 FOR EACH ROW EXECUTE FUNCTION check_courseofferings_seating_capacity();
 
 CREATE OR REPLACE FUNCTION check_is_not_admin_or_manager()
@@ -551,6 +551,12 @@ FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
 	ELSIF (TG_OP = 'UPDATE' AND NEW.room_id <> OLD.room_id) THEN
 		SELECT seating_capacity INTO old_capacity FROM Rooms WHERE room_id = OLD.room_id;
 		SELECT seating_capacity INTO new_capacity FROM Rooms WHERE room_id = NEW.room_id;
+
+        IF OLD.sess_id = NEW.sess_id THEN 
+		UPDATE CourseOfferings
+		SET seating_capacity = seating_capacity - old_capacity + new_capacity
+		WHERE offering_id = OLD.offering_id; 
+        ELSE 
 		UPDATE CourseOfferings
 		SET seating_capacity = seating_capacity - old_capacity
 		WHERE offering_id = OLD.offering_id;
@@ -558,11 +564,11 @@ FOR EACH ROW EXECUTE FUNCTION prevent_session_register();
 		UPDATE CourseOfferings
 		SET seating_capacity = seating_capacity + new_capacity
 		WHERE offering_id = NEW.offering_id;
+        END IF;
          CALL update_start_end_time(OLD.offering_id);
 	END IF;
           CALL update_start_end_time(NEW.offering_id);
 	RETURN NULL;
-
 	END;
 	$$ LANGUAGE PLPGSQL;
 
