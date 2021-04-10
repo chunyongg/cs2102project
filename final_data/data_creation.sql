@@ -321,3 +321,5 @@ call cancel_registration(3, 13);
 call cancel_registration(5, 15);
 call cancel_registration(7, 17);
 call cancel_registration(9, 19);
+
+SELECT * FROM pay_salary();
