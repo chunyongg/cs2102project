@@ -1655,6 +1655,8 @@ DECLARE
 
 s_capacity integer;
 
+room_capacity integer;
+
 start_date date;
 
 end_date date;
@@ -1665,6 +1667,12 @@ BEGIN
 
 IF (array_length(session_items, 1) is NULL) THEN 
     RAISE EXCEPTION 'There must be at least one session';
+END IF;
+
+room_capacity := getSeatingCapacity(session_items)
+
+IF target_number > room_capacity THEN 
+    RAISE EXCEPTION 'Target number cannot be more than seating capacity';
 END IF;
 
 s_capacity := target_number; 
