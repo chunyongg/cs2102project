@@ -1339,11 +1339,13 @@ CREATE OR REPLACE FUNCTION find_rooms (_start_time TIMESTAMP, _duration INT)
 RETURNS TABLE(_room_id INT) AS $$
     DECLARE
         _day INT := extract(dow from _start_time);
-        _hour INT := date_part('hour', _start_time);
+        _start_hour INT := date_part('hour', _start_time);
+        _end_time TIMESTAMP := _start_time + interval '1h' * _duration;
+        _end_hour INT := date_part('hour', _end_time);
     BEGIN
         IF _day in (0,6) THEN
         raise exception 'No course sessions will be held during weekends.';
-        ELSIF _hour not in (9,10,11,14,15,16,17) THEN
+        ELSIF _start_hour not in (9,10,11,14,15,16,17) OR _end_hour not in (10, 11, 12, 15, 16, 17, 18) THEN
             raise exception 'No course sessions will be held during non-operational hours.';
         END IF;
         RETURN QUERY
@@ -1352,7 +1354,7 @@ RETURNS TABLE(_room_id INT) AS $$
         EXCEPT
         SELECT distinct room_id
         FROM Sessions
-        WHERE (start_time, end_time) overlaps (_start_time, _start_time + interval '1h' * _duration)
+        WHERE (start_time, end_time) overlaps (_start_time, _end_time)
         ORDER BY room_id;
     END;
 $$ LANGUAGE PLPGSQL;
