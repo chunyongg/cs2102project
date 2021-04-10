@@ -1077,6 +1077,7 @@ BEGIN
 end;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_cc_trigger ON CreditCards;
 CREATE TRIGGER update_cc_trigger
 BEFORE INSERT or UPDATE ON CreditCards
 FOR EACH ROW EXECUTE FUNCTION update_cc();
