@@ -84,7 +84,7 @@ create table Courses (
 	primary key(course_id, course_area)
 );
 
-create table CourseOfferings (
+create table CourseOfferings (	
 	offering_id integer primary key,
 	launch_date date not null check(launch_date <= registration_deadline),
 	start_date date not null check (start_date <= end_date),
