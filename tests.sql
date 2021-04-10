@@ -140,15 +140,20 @@ CALL add_course_offering(23, 35, 300, 5, '2021-05-21', '2021-05-11', 7,
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- MICH's TESTS (WIP, need to create new data first)
 -- F6
-select * from find_instructors(1, '2021-05-03', 8);  -- invalid session start hour
-select * from find_instructors(1, '2021-05-03', 12); -- invalid session start hour
-select * from find_instructors(1, '2021-05-03', 17); 
-select * from find_instructors(1, '2021-05-03', 10); -- instructor 21 teaching
-select * from find_instructors(1, '2021-05-03', 14); -- instructor 26 free
+select * from find_instructors(1, '2021-05-19', 8);  -- nothing (invalid start hour)
+select * from find_instructors(1, '2021-05-19', 9);  -- 21, 26, 31, 36
+select * from find_instructors(1, '2021-05-19', 11); -- 26, 31, 36 (21 teaching)
+select * from find_instructors(2, '2021-05-19', 16); -- 21, 28, 32, 36
+select * from find_instructors(2, '2021-05-19', 17); -- nothing (invalid duration)
 -- F7
-select * from get_available_instructors (1, '2021-05-01', '2021-08-01') ;
--- all days except weekend
--- contains only instructor from same course area
+select * from get_available_instructors (1, '2021-05-01', '2021-06-01');
+-- 2021-06-02 (excluded cuz outside date range)
+-- 2021-05-19 11-12 (21) => 10 11 12 not avail => 9 14 15 16 17 avail
+-- 2021-05-20 11-12 (21) => 10 11 12 not avail => 9 14 15 16 17 avail
+-- 05-21  9 10 11 12 unavail => cuz teaching cid 2 9-11 correct
+select * from get_available_instructors (2, '2021-05-21', '2021-05-21');
+--Tested monthly hours on old data works
+
 -- F15
 select * from get_available_course_offerings();
 -- F16
@@ -161,7 +166,9 @@ call update_instructor(1, 1, 22); -- instructor does not specialise in the cours
 call update_instructor(3, 1, 39); -- instructor haven't join yet
 call update_instructor(2, 1, 40); -- instructor departed alr
 -- F22
-call update_room(1, 1, 3); -- room is taken by another session
+call update_room(4, 1, 10); -- room is taken by another session
+call update_room(1, 1, 6);
+
 -- Not tested: registered > capacity
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- MICH's TESTS
