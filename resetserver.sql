@@ -3572,3 +3572,24 @@ begin
     close curs;
 end;
 $$ LANGUAGE plpgsql;
+												  
+call register_session(1, 13, 1, 'redemption');
+call register_session(2, 13, 1, 'redemption');
+call register_session(3, 13, 1, 'redemption');
+call register_session(4, 13, 1, 'redemption');
+call register_session(5, 13, 1, 'redemption');
+call register_session(6, 13, 1, 'payment');
+call register_session(7, 13, 1, 'payment');
+call register_session(8, 13, 1, 'payment');
+call register_session(9, 13, 1, 'payment');
+call register_session(10, 13, 1, 'payment');
+call register_session(11, 13, 1, 'payment');
+call register_session(12, 13, 1, 'payment');
+call register_session(13, 13, 1, 'payment');
+call register_session(14, 13, 1, 'payment');
+call register_session(15, 13, 1, 'payment');
+call register_session(16, 13, 1, 'payment');
+call register_session(17, 13, 1, 'payment');
+call register_session(18, 13, 1, 'payment');
+call register_session(19, 13, 1, 'payment');
+call register_session(20, 13, 1, 'payment');
